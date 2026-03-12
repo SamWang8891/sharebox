@@ -1,0 +1,9 @@
+name = "sharebox"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = "dist"
+
+[[r2_buckets]]
+binding = "R2_BUCKET"
+bucket_name = "sharebox-files"
+preview_bucket_name = "sharebox-files-preview"
