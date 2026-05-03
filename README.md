@@ -1,95 +1,141 @@
 # ShareBox
 
-Private file sharing on Cloudflare Pages + R2.
+Self-hosted private file sharing on Cloudflare Pages + R2. Authenticated uploads, public download links, optional passwords and expiry, and (optionally) in-browser editing of office documents via Collabora.
 
-## What it does
+```
+Browser ──▶ Cloudflare Pages (React)
+              │
+              ▼
+        Pages Functions (Hono API)
+         │            │           │
+         ▼            ▼           ▼
+       Clerk      Neon PG       R2 bucket
+       (JWT)    (metadata)    (file bytes)
+```
 
-- Public link access for uploaded files (`/f/:id`)
-- Sign in via Clerk (Google / GitHub / Discord / etc.)
-- Upload access restricted to:
-  - admins from `ADMIN_EMAILS` (env)
-  - emails added in Admin panel (`allowed_users`)
-- Upload options:
-  - optional password protection
-  - expiration (1h / 24h / 7d / 30d / never)
-- 80MB upload limit (configurable via `MAX_UPLOAD_SIZE`)
-- Dashboard: list and delete your uploads
-- Admin panel: add/remove allowed uploader emails
+## Features
 
-## Stack
+- **Public links** at `/f/:id` — recipients don't need an account.
+- **Authenticated uploads** via Clerk (Google, GitHub, Discord, etc.).
+- **Allowlist model** — only emails in `ADMIN_EMAILS` or the in-app allowlist can upload.
+- **Per-file controls** — optional password, expiry (1h / 24h / 7d / 30d / never), 80 MB default cap (`MAX_UPLOAD_SIZE`).
+- **Owner dashboard** — list and delete your uploads.
+- **Admin panel** — manage who's allowed to upload.
+- **HEIC preview** — converted on the client.
+- **Optional Collabora editing** — owners can edit docx/xlsx/pptx/odt in-browser; saves back to R2 in place.
 
-- **Frontend:** Vite + React + TypeScript + Tailwind
-- **API:** Hono on Cloudflare Pages Functions
-- **Auth:** Clerk (JWT verified server-side via JWKS)
-- **DB:** Neon Postgres
-- **Storage:** Cloudflare R2 (`R2_BUCKET` binding)
+## Tech
 
-## Project structure
+| Layer    | Choice                                          |
+| -------- | ----------------------------------------------- |
+| Frontend | Vite, React, TypeScript, Tailwind               |
+| API      | Hono on Cloudflare Pages Functions              |
+| Auth     | Clerk (JWT verified server-side via JWKS)       |
+| DB       | Neon Postgres (`@neondatabase/serverless`)      |
+| Storage  | Cloudflare R2                                   |
+| Editing  | Collabora Online via WOPI (optional)            |
 
-- `src/` → frontend
-- `server/` → Hono app + auth verification + routes
-- `functions/api/[[route]].ts` → Pages function entrypoint
-- `db/schema.sql` → SQL schema
+## Project layout
 
-## Setup
+```
+src/                         frontend (React)
+  pages/                     Home, Dashboard, FileView, EditView, Admin
+server/
+  app.ts                     Hono app wiring
+  clerk-auth.ts              JWT verification (JWKS)
+  routes/{files,admin,wopi}  API + WOPI host endpoints
+functions/api/[[route]].ts   Pages Function entrypoint
+db/schema.sql                Postgres schema
+wrangler.toml                R2 bindings, compatibility flags
+```
 
-1. **Create a Neon project** and copy the connection string.
-2. **Run `db/schema.sql`** against your Neon database.
-3. **Create a Clerk app** at https://dashboard.clerk.com. Enable the OAuth providers you want (Google, GitHub, Discord, etc.). Copy your **Publishable key** (`pk_...`) and **Secret key** (`sk_...`) from the API Keys page.
-4. **Create R2 buckets** matching `wrangler.toml`:
-   - `sharebox-files`
-   - `sharebox-files-preview`
-5. **Copy `.dev.vars.example` → `.dev.vars`** and fill in the values.
-6. **Install deps:**
-   ```bash
-   npm install
-   ```
-7. **Run dev** (full stack — builds frontend, watches for changes, runs Pages function locally with R2 + auth):
-   ```bash
-   npm run dev
-   ```
-   App runs at http://localhost:5173.
+## Getting started
 
-   Frontend-only (no API):
-   ```bash
-   npm run dev:frontend
-   ```
-8. **Deploy:**
-   ```bash
-   npm run deploy
-   ```
+### Prerequisites
 
-## Env vars
+- Node 18+
+- A [Neon](https://neon.tech) Postgres database
+- A [Clerk](https://dashboard.clerk.com) application (enable the OAuth providers you want)
+- A Cloudflare account with R2 enabled
 
-Set in `.dev.vars` (local) and **Cloudflare Pages → Settings → Environment variables** (production):
+### 1. Clone & install
 
-| Variable | Encrypted | Purpose |
-|---|---|---|
-| `DATABASE_URL` | yes | Neon Postgres connection string |
-| `ADMIN_EMAILS` | no | Comma-separated admin emails |
-| `CLERK_PUBLISHABLE_KEY` | no | Clerk publishable key (`pk_...`) — used server-side to derive the JWKS URL |
-| `CLERK_SECRET_KEY` | yes | Clerk secret key (`sk_...`) — used server-side to fetch user details |
-| `VITE_CLERK_PUBLISHABLE_KEY` | no | Same value as `CLERK_PUBLISHABLE_KEY`. Read by Vite at build time and embedded into the JS bundle. |
-| `MAX_UPLOAD_SIZE` | no | Optional, in bytes (default 80MB) |
-| `COLLABORA_URL` | no | Optional, e.g. `https://collabora.example.com`. Enables in-browser document editing for owners on docx/xlsx/pptx/odt/etc. files. When unset, edit feature is hidden. |
+```bash
+git clone <this repo>
+cd sharebox
+npm install
+```
 
-The `VITE_*` var must be present at **build time** for the frontend bundle. On Cloudflare Pages, set it as a plain (non-secret) env var on the project so it's available during the build.
+### 2. Provision
 
-## Optional: Collabora Online integration
+- Run `db/schema.sql` against your Neon database.
+- Create the R2 buckets referenced in `wrangler.toml`:
+  - `sharebox-files`
+  - `sharebox-files-preview`
+- Grab your Clerk **Publishable** (`pk_…`) and **Secret** (`sk_…`) keys.
 
-Set `COLLABORA_URL` (e.g. `https://ncoffice.smashit.tw`) to enable in-browser editing of office documents (docx, xlsx, pptx, odt, ods, odp, txt, csv, rtf). The file owner sees an **Edit** button on `/f/:id`; clicking it opens Collabora in an iframe and edits save back to R2 in place.
+### 3. Configure
 
-WOPI host endpoints live at `/wopi/*`. On the Collabora side, you must:
+Copy `.dev.vars.example` → `.dev.vars` and fill in the values (see [Environment variables](#environment-variables)).
 
-1. Add `https://share.smashit.tw` to the allowed WOPI hosts (e.g. `aliasgroup1` in `coolwsd.xml`, or the equivalent env var on your container).
-2. Allow `share.smashit.tw` in `frame-ancestors` so the editor can be iframed.
-3. Make sure `https://<COLLABORA_URL>/hosting/discovery` is reachable from Cloudflare (no IP allowlist blocking the Worker).
+### 4. Run locally
 
-Edit access is owner-only and disabled for password-protected files.
+```bash
+npm run dev          # full stack on http://localhost:5173 (Pages + R2 + auth)
+npm run dev:frontend # frontend only, no API
+```
 
-## Notes
+### 5. Deploy
 
-- API mounted under `/api/*`.
-- Public file route in frontend is `/f/:id`.
-- Sign-in opens as a Clerk modal; no callback URL configuration needed.
-- The `nodejs_compat` compatibility flag must be enabled in **Cloudflare dashboard → Pages → Settings → Functions → Compatibility flags** for production (in addition to `wrangler.toml` for local dev).
+```bash
+npm run deploy
+```
+
+Then in **Cloudflare Pages → Settings**:
+
+- Add the same env vars under **Environment variables**.
+- Enable the `nodejs_compat` flag under **Functions → Compatibility flags** (the entry in `wrangler.toml` only covers local dev).
+
+## Environment variables
+
+| Variable                      | Secret | Purpose                                                                 |
+| ----------------------------- | ------ | ----------------------------------------------------------------------- |
+| `DATABASE_URL`                | yes    | Neon Postgres connection string                                         |
+| `ADMIN_EMAILS`                | no     | Comma-separated admin emails                                            |
+| `CLERK_PUBLISHABLE_KEY`       | no     | Clerk `pk_…` — server uses it to derive the JWKS URL                    |
+| `CLERK_SECRET_KEY`            | yes    | Clerk `sk_…` — server uses it to fetch user details                     |
+| `VITE_CLERK_PUBLISHABLE_KEY`  | no     | Same value as `CLERK_PUBLISHABLE_KEY`. Embedded in the JS bundle at build time. |
+| `MAX_UPLOAD_SIZE`             | no     | Bytes; default 80 MB                                                    |
+| `COLLABORA_URL`               | no     | e.g. `https://collabora.example.com`. Enables in-browser editing.       |
+
+`VITE_*` vars must exist at **build time** — set them as plain (non-secret) Pages env vars so they're present during the build.
+
+## How permissions work
+
+- **Anyone** with a link can download a file (entering the password if one is set).
+- **Uploading** requires a signed-in user whose email is in `ADMIN_EMAILS` or the `allowed_users` table.
+- **Admins** (emails in `ADMIN_EMAILS`) manage the allowlist via `/admin`.
+- **Owners** (the uploader) can delete their own files from `/dashboard` and edit them via Collabora if enabled.
+
+## Optional: Collabora Online editing
+
+Set `COLLABORA_URL` to a reachable Collabora Online (Code) instance. The owner sees an **Edit** button on `/f/:id` for supported types (docx, xlsx, pptx, odt, ods, odp, txt, csv, rtf); changes save back to the same R2 object.
+
+WOPI host endpoints live under `/wopi/*`. On the Collabora side:
+
+1. Allow your ShareBox origin (e.g. `https://share.example.com`) as a WOPI host (e.g. `aliasgroup1` in `coolwsd.xml`).
+2. Allow the same origin in `frame-ancestors` so the editor can be iframed.
+3. Make sure `<COLLABORA_URL>/hosting/discovery` is reachable from Cloudflare (no IP allowlist blocking the Worker).
+
+Editing is owner-only and disabled for password-protected files.
+
+## Troubleshooting
+
+- **`nodejs_compat` errors in production** — enable the flag in the Pages dashboard, not just `wrangler.toml`.
+- **Clerk session not detected** — confirm `VITE_CLERK_PUBLISHABLE_KEY` was set at build time, then redeploy.
+- **Edit button missing** — owner-only; hidden for password-protected files; requires `COLLABORA_URL` and a supported extension.
+- **Upload denied for an email you expected to work** — check `ADMIN_EMAILS` casing and the `allowed_users` table.
+
+## License
+
+See [LICENSE](LICENSE).
