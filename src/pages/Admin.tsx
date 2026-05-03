@@ -6,16 +6,22 @@ import {
   Loader2,
   Crown,
   UserCheck,
+  HardDrive,
 } from "lucide-react";
 import {
   getAdminUsers,
   addAllowedUser,
   removeAllowedUser,
+  getUsage,
+  formatBytes,
   type AllowedUsersResponse,
+  type UsageResponse,
 } from "../lib/api";
+import { UsageBar } from "../components/UsageBar";
 
 export function Admin() {
   const [data, setData] = useState<AllowedUsersResponse | null>(null);
+  const [usage, setUsage] = useState<UsageResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState("");
   const [adding, setAdding] = useState(false);
@@ -23,8 +29,12 @@ export function Admin() {
 
   const load = useCallback(async () => {
     try {
-      const result = await getAdminUsers();
-      setData(result);
+      const [users, usageData] = await Promise.all([
+        getAdminUsers(),
+        getUsage(),
+      ]);
+      setData(users);
+      setUsage(usageData);
     } catch (err) {
       console.error(err);
     } finally {
@@ -76,6 +86,40 @@ export function Admin() {
         <Shield className="w-6 h-6 text-primary" />
         <h1 className="text-2xl font-bold">Admin</h1>
       </div>
+
+      {/* Usage / quotas */}
+      {usage && (
+        <section className="mb-8">
+          <h2 className="text-sm font-medium text-text-muted mb-3 uppercase tracking-wide flex items-center gap-2">
+            <HardDrive className="w-3.5 h-3.5" />
+            Usage
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <UsageBar
+              label="Storage"
+              used={usage.usage.storageBytes}
+              limit={usage.limits.maxStorageBytes}
+              formatter={formatBytes}
+            />
+            <UsageBar
+              label="Downloads"
+              used={usage.usage.totalDownloads}
+              limit={usage.limits.maxDownloads}
+            />
+            <UsageBar
+              label="Bandwidth (est.)"
+              used={usage.usage.bandwidthBytes}
+              limit={usage.limits.maxBandwidthBytes}
+              formatter={formatBytes}
+            />
+            <UsageBar
+              label="Files"
+              used={usage.usage.fileCount}
+              limit={null}
+            />
+          </div>
+        </section>
+      )}
 
       {/* Add user form */}
       <form onSubmit={handleAdd} className="mb-8">

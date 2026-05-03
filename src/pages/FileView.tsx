@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import {
   Download,
@@ -9,6 +9,8 @@ import {
   FileText,
 } from "lucide-react";
 import { PasswordPrompt } from "../components/PasswordPrompt";
+import { CodePreview, isTextLike } from "../components/CodePreview";
+import "highlight.js/styles/github-dark.css";
 import {
   getFileInfo,
   verifyFilePassword,
@@ -68,14 +70,10 @@ export function FileView() {
     );
   }
 
-  // Need password
   if (file.hasPassword && !accessToken) {
     return (
       <div className="px-4 py-20">
-        <PasswordPrompt
-          onSubmit={handlePasswordSubmit}
-          error={passwordError}
-        />
+        <PasswordPrompt onSubmit={handlePasswordSubmit} error={passwordError} />
       </div>
     );
   }
@@ -84,15 +82,11 @@ export function FileView() {
   const isImage = file.mimeType?.startsWith("image/");
   const isVideo = file.mimeType?.startsWith("video/");
   const isAudio = file.mimeType?.startsWith("audio/");
-  const isText =
-    file.mimeType?.startsWith("text/") ||
-    file.mimeType === "application/json" ||
-    file.mimeType === "application/xml";
   const isPdf = file.mimeType === "application/pdf";
+  const isCode = isTextLike(file.mimeType, file.originalName);
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
-      {/* File info header */}
       <div className="bg-surface-light rounded-xl p-6 border border-border mb-6">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
@@ -104,7 +98,8 @@ export function FileView() {
               <span>{file.mimeType}</span>
               <span className="flex items-center gap-1">
                 <Eye className="w-3.5 h-3.5" />
-                {file.accessCount} views
+                {file.accessCount}{" "}
+                {file.accessCount === 1 ? "download" : "downloads"}
               </span>
               {file.expiresAt && (
                 <span className="flex items-center gap-1">
@@ -126,7 +121,6 @@ export function FileView() {
         </div>
       </div>
 
-      {/* Preview */}
       <div className="bg-surface-light rounded-xl border border-border overflow-hidden">
         {isImage && (
           <div className="flex items-center justify-center p-4 bg-black/20">
@@ -139,11 +133,7 @@ export function FileView() {
         )}
 
         {isVideo && (
-          <video
-            src={rawUrl}
-            controls
-            className="w-full max-h-[70vh]"
-          />
+          <video src={rawUrl} controls className="w-full max-h-[70vh]" />
         )}
 
         {isAudio && (
@@ -160,11 +150,15 @@ export function FileView() {
           />
         )}
 
-        {isText && (
-          <TextPreview url={rawUrl} />
+        {!isImage && !isVideo && !isAudio && !isPdf && isCode && (
+          <CodePreview
+            url={rawUrl}
+            filename={file.originalName}
+            mimeType={file.mimeType}
+          />
         )}
 
-        {!isImage && !isVideo && !isAudio && !isPdf && !isText && (
+        {!isImage && !isVideo && !isAudio && !isPdf && !isCode && (
           <div className="p-12 text-center text-text-muted">
             <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
             <p className="text-sm">
@@ -174,32 +168,5 @@ export function FileView() {
         )}
       </div>
     </div>
-  );
-}
-
-function TextPreview({ url }: { url: string }) {
-  const [content, setContent] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetch(url)
-      .then((r) => r.text())
-      .then((text) => setContent(text.slice(0, 50000)))
-      .catch(() => setContent("Failed to load preview"))
-      .finally(() => setLoading(false));
-  }, [url]);
-
-  if (loading) {
-    return (
-      <div className="p-8 flex justify-center">
-        <Loader2 className="w-5 h-5 text-text-muted animate-spin" />
-      </div>
-    );
-  }
-
-  return (
-    <pre className="p-6 text-sm overflow-auto max-h-[70vh] whitespace-pre-wrap break-words font-mono text-text-muted">
-      {content}
-    </pre>
   );
 }

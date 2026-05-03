@@ -125,6 +125,25 @@ export async function removeAllowedUser(email: string): Promise<void> {
   });
 }
 
+export type UsageResponse = {
+  usage: {
+    storageBytes: number;
+    totalDownloads: number;
+    bandwidthBytes: number;
+    fileCount: number;
+  };
+  limits: {
+    maxStorageBytes: number | null;
+    maxDownloads: number | null;
+    maxBandwidthBytes: number | null;
+    maxUploadSize: number;
+  };
+};
+
+export async function getUsage(): Promise<UsageResponse> {
+  return request("/admin/usage");
+}
+
 // ── Utility ─────────────────────────────────────────────────────────
 
 export function formatBytes(bytes: number): string {

@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
-import { Upload, Shield, LogOut, Box } from "lucide-react";
+import { Shield, LogOut, Box } from "lucide-react";
 import { SignInButton, SignedIn, SignedOut, useClerk } from "@clerk/clerk-react";
+import { ThemeToggle } from "./ThemeToggle";
 import type { CurrentUser } from "../lib/api";
 
 export function Navbar({ user }: { user: CurrentUser | null }) {
@@ -18,16 +19,6 @@ export function Navbar({ user }: { user: CurrentUser | null }) {
         </Link>
 
         <div className="flex items-center gap-3">
-          {user?.isApproved && (
-            <Link
-              to="/dashboard"
-              className="flex items-center gap-1.5 text-sm text-text-muted hover:text-text transition-colors"
-            >
-              <Upload className="w-4 h-4" />
-              Dashboard
-            </Link>
-          )}
-
           {user?.isAdmin && (
             <Link
               to="/admin"
@@ -37,6 +28,8 @@ export function Navbar({ user }: { user: CurrentUser | null }) {
               Admin
             </Link>
           )}
+
+          <ThemeToggle />
 
           <SignedIn>
             <div className="flex items-center gap-3">

@@ -12,6 +12,12 @@ import {
   verifyAccessToken,
   getFileTokenSecret,
 } from "../utils";
+import {
+  parseLimits,
+  getUsage,
+  checkUploadAllowed,
+  checkDownloadAllowed,
+} from "../usage";
 import type { Env, UserInfo } from "../types";
 
 type FilesEnv = {
@@ -49,28 +55,30 @@ app.get("/", requireAuth, async (c) => {
 // ── Upload file ─────────────────────────────────────────────────────
 app.post("/", requireAuth, async (c) => {
   const user = c.get("user");
-  const maxSize = parseInt(c.env.MAX_UPLOAD_SIZE ?? "83886080", 10); // 80MB
+  const limits = parseLimits(c.env);
 
   const formData = await c.req.formData();
   const file = formData.get("file") as File | null;
   const password = formData.get("password") as string | null;
-  const expiresIn = formData.get("expiresIn") as string | null; // hours, or "never"
+  const expiresIn = formData.get("expiresIn") as string | null;
 
   if (!file) {
     return c.json({ error: "No file provided" }, 400);
   }
 
-  if (file.size > maxSize) {
+  const db = createDb(c.env.DATABASE_URL);
+  const usage = await getUsage(db);
+  const denial = checkUploadAllowed(usage, limits, file.size);
+  if (denial) {
     return c.json(
-      { error: `File too large. Max ${Math.round(maxSize / 1024 / 1024)}MB` },
-      413
+      { error: denial.message, code: denial.code },
+      denial.code === "upload_size" ? 413 : 507
     );
   }
 
   const fileId = generateFileId();
   const r2Key = `files/${fileId}/${file.name}`;
 
-  // Upload to R2
   await c.env.R2_BUCKET.put(r2Key, file.stream(), {
     httpMetadata: {
       contentType: file.type || "application/octet-stream",
@@ -81,7 +89,6 @@ app.post("/", requireAuth, async (c) => {
     },
   });
 
-  // Hash password if provided
   let passwordHash: string | null = null;
   let salt: string | null = null;
   if (password && password.trim()) {
@@ -89,7 +96,6 @@ app.post("/", requireAuth, async (c) => {
     passwordHash = await hashPassword(password.trim(), salt);
   }
 
-  // Calculate expiry
   let expiresAt: Date | null = null;
   if (expiresIn && expiresIn !== "never") {
     const hours = parseInt(expiresIn, 10);
@@ -98,8 +104,6 @@ app.post("/", requireAuth, async (c) => {
     }
   }
 
-  // Insert into DB
-  const db = createDb(c.env.DATABASE_URL);
   await db.insert(files).values({
     id: fileId,
     userId: user.id,
@@ -119,6 +123,9 @@ app.post("/", requireAuth, async (c) => {
     size: file.size,
     hasPassword: !!passwordHash,
     expiresAt: expiresAt?.toISOString() ?? null,
+    accessCount: 0,
+    createdAt: new Date().toISOString(),
+    mimeType: file.type || "application/octet-stream",
   });
 });
 
@@ -136,7 +143,6 @@ app.get("/:id", async (c) => {
     return c.json({ error: "File not found" }, 404);
   }
 
-  // Check expiry
   if (file.expiresAt && new Date() > file.expiresAt) {
     return c.json({ error: "File has expired" }, 410);
   }
@@ -195,7 +201,6 @@ app.get("/:id/raw", async (c) => {
   if (file.expiresAt && new Date() > file.expiresAt)
     return c.json({ error: "File has expired" }, 410);
 
-  // Password check
   if (file.passwordHash) {
     const token = c.req.query("token");
     if (!token) return c.json({ error: "Access token required" }, 401);
@@ -207,21 +212,29 @@ app.get("/:id/raw", async (c) => {
     if (!valid) return c.json({ error: "Invalid or expired token" }, 401);
   }
 
-  // Fetch from R2
+  // Quota check before serving
+  const limits = parseLimits(c.env);
+  if (
+    limits.maxDownloads !== null ||
+    limits.maxBandwidthBytes !== null
+  ) {
+    const usage = await getUsage(db);
+    const denial = checkDownloadAllowed(usage, limits, file.size);
+    if (denial) {
+      return c.json({ error: denial.message, code: denial.code }, 503);
+    }
+  }
+
   const object = await c.env.R2_BUCKET.get(file.r2Key);
   if (!object) return c.json({ error: "File not found in storage" }, 404);
 
-  // Increment access count
   await db
     .update(files)
     .set({ accessCount: file.accessCount + 1 })
     .where(eq(files.id, fileId));
 
   const headers = new Headers();
-  headers.set(
-    "Content-Type",
-    file.mimeType || "application/octet-stream"
-  );
+  headers.set("Content-Type", file.mimeType || "application/octet-stream");
   headers.set("Content-Length", file.size.toString());
   headers.set(
     "Content-Disposition",
@@ -249,7 +262,6 @@ app.delete("/:id", requireAuth, async (c) => {
     return c.json({ error: "Not authorized" }, 403);
   }
 
-  // Delete from R2 and DB
   await c.env.R2_BUCKET.delete(file.r2Key);
   await db.delete(files).where(eq(files.id, fileId));
 

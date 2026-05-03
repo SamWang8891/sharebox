@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { createDb } from "../db";
 import { allowedUsers } from "../schema";
 import { requireAuth, requireAdmin } from "../middleware";
+import { parseLimits, getUsage } from "../usage";
 import type { Env, UserInfo } from "../types";
 
 type AdminEnv = {
@@ -59,6 +60,16 @@ app.delete("/users/:email", async (c) => {
   const db = createDb(c.env.DATABASE_URL);
   await db.delete(allowedUsers).where(eq(allowedUsers.email, email));
   return c.json({ ok: true });
+});
+
+// ── Usage / quotas ──────────────────────────────────────────────────
+app.get("/usage", async (c) => {
+  const db = createDb(c.env.DATABASE_URL);
+  const [usage, limits] = await Promise.all([
+    getUsage(db),
+    Promise.resolve(parseLimits(c.env)),
+  ]);
+  return c.json({ usage, limits });
 });
 
 export { app as adminRoutes };

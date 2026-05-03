@@ -44,7 +44,16 @@ export default function App() {
   return (
     <Layout user={serverUser}>
       <Routes>
-        <Route path="/" element={<Home user={serverUser} />} />
+        <Route
+          path="/"
+          element={
+            serverUser?.isApproved ? (
+              <Dashboard />
+            ) : (
+              <Home user={serverUser} />
+            )
+          }
+        />
         <Route
           path="/dashboard"
           element={

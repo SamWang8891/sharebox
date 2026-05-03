@@ -75,9 +75,10 @@ export function FileCard({
           <p className="text-sm font-medium truncate">{file.originalName}</p>
           <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-xs text-text-muted">
             <span>{formatBytes(file.size)}</span>
-            <span className="flex items-center gap-1">
+            <span className="flex items-center gap-1" title="Downloads">
               <Eye className="w-3 h-3" />
-              {file.accessCount}
+              {file.accessCount}{" "}
+              {file.accessCount === 1 ? "download" : "downloads"}
             </span>
             {file.hasPassword && (
               <span className="flex items-center gap-1 text-yellow-500">
