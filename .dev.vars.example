@@ -17,3 +17,7 @@ MAX_UPLOAD_SIZE=94371840              # 90 MB per file
 MAX_TOTAL_STORAGE_BYTES=10737418240   # 10 GB total (R2 free tier)
 MAX_TOTAL_DOWNLOADS=10000000          # 10M downloads/month (R2 Class B free tier)
 MAX_TOTAL_BANDWIDTH_BYTES=            # blank = unlimited (R2 egress is free)
+
+# Optional: Collabora Online for in-browser document editing.
+# When unset, the Edit feature is hidden everywhere.
+# COLLABORA_URL=https://ncoffice.smashit.tw

@@ -71,8 +71,21 @@ Set in `.dev.vars` (local) and **Cloudflare Pages → Settings → Environment v
 | `CLERK_SECRET_KEY` | yes | Clerk secret key (`sk_...`) — used server-side to fetch user details |
 | `VITE_CLERK_PUBLISHABLE_KEY` | no | Same value as `CLERK_PUBLISHABLE_KEY`. Read by Vite at build time and embedded into the JS bundle. |
 | `MAX_UPLOAD_SIZE` | no | Optional, in bytes (default 80MB) |
+| `COLLABORA_URL` | no | Optional, e.g. `https://collabora.example.com`. Enables in-browser document editing for owners on docx/xlsx/pptx/odt/etc. files. When unset, edit feature is hidden. |
 
 The `VITE_*` var must be present at **build time** for the frontend bundle. On Cloudflare Pages, set it as a plain (non-secret) env var on the project so it's available during the build.
+
+## Optional: Collabora Online integration
+
+Set `COLLABORA_URL` (e.g. `https://ncoffice.smashit.tw`) to enable in-browser editing of office documents (docx, xlsx, pptx, odt, ods, odp, txt, csv, rtf). The file owner sees an **Edit** button on `/f/:id`; clicking it opens Collabora in an iframe and edits save back to R2 in place.
+
+WOPI host endpoints live at `/wopi/*`. On the Collabora side, you must:
+
+1. Add `https://share.smashit.tw` to the allowed WOPI hosts (e.g. `aliasgroup1` in `coolwsd.xml`, or the equivalent env var on your container).
+2. Allow `share.smashit.tw` in `frame-ancestors` so the editor can be iframed.
+3. Make sure `https://<COLLABORA_URL>/hosting/discovery` is reachable from Cloudflare (no IP allowlist blocking the Worker).
+
+Edit access is owner-only and disabled for password-protected files.
 
 ## Notes
 

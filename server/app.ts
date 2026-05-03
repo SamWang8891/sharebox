@@ -3,6 +3,7 @@ import { cors } from "hono/cors";
 import { eq } from "drizzle-orm";
 import { fileRoutes } from "./routes/files";
 import { adminRoutes } from "./routes/admin";
+import { wopiRoutes } from "./routes/wopi";
 import { createDb } from "./db";
 import { allowedUsers } from "./schema";
 import { verifyClerkToken, extractBearerToken } from "./clerk-auth";
@@ -47,5 +48,6 @@ app.get("/api/me", async (c) => {
 
 app.route("/api/files", fileRoutes);
 app.route("/api/admin", adminRoutes);
+app.route("/wopi", wopiRoutes);
 
 export { app };

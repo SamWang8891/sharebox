@@ -6,6 +6,7 @@ import { Home } from "./pages/Home";
 import { Dashboard } from "./pages/Dashboard";
 import { FileView } from "./pages/FileView";
 import { Admin } from "./pages/Admin";
+import { EditView } from "./pages/EditView";
 import { getMe, type CurrentUser } from "./lib/api";
 import { Loader2 } from "lucide-react";
 
@@ -61,6 +62,16 @@ export default function App() {
           }
         />
         <Route path="/f/:id" element={<FileView />} />
+        <Route
+          path="/edit/:id"
+          element={
+            serverUser?.isApproved ? (
+              <EditView />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
         <Route
           path="/admin"
           element={

@@ -14,6 +14,8 @@ export interface Env {
   MAX_TOTAL_BANDWIDTH_BYTES?: string;
   /** Optional, used to sign short-lived file access tokens. Falls back to CLERK_SECRET_KEY. */
   FILE_TOKEN_SECRET?: string;
+  /** Optional Collabora Online base URL (e.g. https://ncoffice.smashit.tw). When unset, edit feature is hidden. */
+  COLLABORA_URL?: string;
 }
 
 export type UserInfo = {

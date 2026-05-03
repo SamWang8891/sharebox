@@ -7,7 +7,9 @@ import {
   Clock,
   Eye,
   FileText,
+  Pencil,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 import { PasswordPrompt } from "../components/PasswordPrompt";
 import { CodePreview, isTextLike } from "../components/CodePreview";
 import { HeicPreview, isHeic } from "../components/HeicPreview";
@@ -112,14 +114,25 @@ export function FileView() {
             </div>
           </div>
 
-          <a
-            href={rawUrl}
-            download={file.originalName}
-            className="flex items-center justify-center gap-2 bg-primary hover:bg-primary-hover text-white text-sm px-4 py-2.5 rounded-lg transition-colors shrink-0 w-full sm:w-auto"
-          >
-            <Download className="w-4 h-4" />
-            Download
-          </a>
+          <div className="flex flex-col sm:flex-row gap-2 shrink-0 w-full sm:w-auto">
+            {file.canEdit && file.isOwner && (
+              <Link
+                to={`/edit/${file.id}`}
+                className="flex items-center justify-center gap-2 bg-surface hover:bg-surface-lighter border border-border text-sm px-4 py-2.5 rounded-lg transition-colors w-full sm:w-auto"
+              >
+                <Pencil className="w-4 h-4" />
+                Edit
+              </Link>
+            )}
+            <a
+              href={rawUrl}
+              download={file.originalName}
+              className="flex items-center justify-center gap-2 bg-primary hover:bg-primary-hover text-white text-sm px-4 py-2.5 rounded-lg transition-colors w-full sm:w-auto"
+            >
+              <Download className="w-4 h-4" />
+              Download
+            </a>
+          </div>
         </div>
       </div>
 

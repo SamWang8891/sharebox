@@ -58,7 +58,21 @@ export type FileInfo = {
   createdAt: string;
   accessCount: number;
   url?: string;
+  /** Present on /files/:id only. */
+  canEdit?: boolean;
+  isOwner?: boolean;
 };
+
+export type EditSession = {
+  actionUrl: string;
+  wopiSrc: string;
+  accessToken: string;
+  accessTokenTtl: number;
+};
+
+export async function startEditSession(id: string): Promise<EditSession> {
+  return request(`/files/${id}/edit`);
+}
 
 export async function listFiles(): Promise<FileInfo[]> {
   return request("/files");
