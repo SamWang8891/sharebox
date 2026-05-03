@@ -8,7 +8,10 @@ export function Navbar({ user }: { user: CurrentUser | null }) {
   const { signOut } = useClerk();
 
   return (
-    <nav className="border-b border-border bg-surface-light/70 backdrop-blur-md sticky top-0 z-50">
+    <nav
+      className="border-b border-border bg-surface-light/70 backdrop-blur-md sticky top-0 z-50"
+      style={{ paddingTop: "env(safe-area-inset-top)" }}
+    >
       <div className="max-w-5xl mx-auto px-3 sm:px-4 h-14 flex items-center justify-between gap-2">
         <Link
           to="/"
