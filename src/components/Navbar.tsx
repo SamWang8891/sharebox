@@ -1,9 +1,12 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Upload, Shield, LogOut, LogIn, Box } from "lucide-react";
+import { useUser } from "@stackframe/react";
 import type { CurrentUser } from "../lib/api";
-import { signIn, signOut } from "../lib/auth-client";
 
 export function Navbar({ user }: { user: CurrentUser | null }) {
+  const stackUser = useUser();
+  const navigate = useNavigate();
+
   return (
     <nav className="border-b border-border bg-surface-light/50 backdrop-blur-sm sticky top-0 z-50">
       <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
@@ -49,7 +52,10 @@ export function Navbar({ user }: { user: CurrentUser | null }) {
                 {user.name}
               </span>
               <button
-                onClick={() => signOut()}
+                onClick={async () => {
+                  await stackUser?.signOut();
+                  navigate("/");
+                }}
                 className="text-text-muted hover:text-text transition-colors"
                 title="Sign out"
               >
@@ -57,13 +63,13 @@ export function Navbar({ user }: { user: CurrentUser | null }) {
               </button>
             </div>
           ) : (
-            <button
-              onClick={() => signIn.social({ provider: "google" })}
+            <Link
+              to="/handler/sign-in"
               className="flex items-center gap-1.5 bg-primary hover:bg-primary-hover text-white text-sm px-3 py-1.5 rounded-lg transition-colors"
             >
               <LogIn className="w-4 h-4" />
               Sign in
-            </button>
+            </Link>
           )}
         </div>
       </div>

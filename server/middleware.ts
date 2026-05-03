@@ -1,47 +1,42 @@
 import { createMiddleware } from "hono/factory";
-import { createAuth } from "./auth";
+import { eq } from "drizzle-orm";
 import { createDb } from "./db";
 import { allowedUsers } from "./schema";
-import { eq } from "drizzle-orm";
+import { verifyStackToken, extractBearerToken } from "./stack-auth";
 import type { Env, UserInfo } from "./types";
 
 type AuthEnv = {
   Bindings: Env;
-  Variables: {
-    user: UserInfo;
-    auth: ReturnType<typeof createAuth>;
-  };
+  Variables: { user: UserInfo };
 };
 
-/** Attach Better Auth instance to context */
-export const authInstance = createMiddleware<AuthEnv>(async (c, next) => {
-  c.set("auth", createAuth(c.env));
-  await next();
-});
+function adminEmailsFromEnv(env: Env): string[] {
+  return env.ADMIN_EMAILS.split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+}
 
-/** Require authenticated user — sets c.var.user */
+/** Require authenticated, approved user — sets c.var.user */
 export const requireAuth = createMiddleware<AuthEnv>(async (c, next) => {
-  const auth = c.get("auth") ?? createAuth(c.env);
-  const session = await auth.api.getSession({
-    headers: c.req.raw.headers,
-  });
-
-  if (!session?.user) {
+  const token = extractBearerToken(c.req.raw.headers);
+  if (!token) {
     return c.json({ error: "Unauthorized" }, 401);
   }
 
-  const adminEmails = c.env.ADMIN_EMAILS.split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean);
-  const isAdmin = adminEmails.includes(session.user.email.toLowerCase());
+  const stackUser = await verifyStackToken(c.env, token);
+  if (!stackUser) {
+    return c.json({ error: "Invalid or expired session" }, 401);
+  }
 
-  // Check if user is admin or in allowed list
+  const adminEmails = adminEmailsFromEnv(c.env);
+  const isAdmin = adminEmails.includes(stackUser.email.toLowerCase());
+
   if (!isAdmin) {
     const db = createDb(c.env.DATABASE_URL);
     const allowed = await db
       .select()
       .from(allowedUsers)
-      .where(eq(allowedUsers.email, session.user.email.toLowerCase()));
+      .where(eq(allowedUsers.email, stackUser.email.toLowerCase()));
     if (allowed.length === 0) {
       return c.json(
         { error: "Access denied. Contact admin for approval.", approved: false },
@@ -50,14 +45,7 @@ export const requireAuth = createMiddleware<AuthEnv>(async (c, next) => {
     }
   }
 
-  c.set("user", {
-    id: session.user.id,
-    email: session.user.email,
-    name: session.user.name,
-    image: session.user.image,
-    isAdmin,
-  });
-
+  c.set("user", { ...stackUser, isAdmin });
   await next();
 });
 

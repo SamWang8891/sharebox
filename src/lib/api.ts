@@ -1,10 +1,19 @@
+import { stackApp } from "./stack";
+
 const BASE = "/api";
 
+async function authHeader(): Promise<Record<string, string>> {
+  const user = await stackApp.getUser();
+  if (!user) return {};
+  const { accessToken } = await user.getAuthJson();
+  return accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
-    credentials: "include",
-    ...options,
-  });
+  const headers = new Headers(options?.headers);
+  for (const [k, v] of Object.entries(await authHeader())) headers.set(k, v);
+
+  const res = await fetch(`${BASE}${path}`, { ...options, headers });
   if (!res.ok) {
     const body = await res.json().catch(() => ({ error: res.statusText }));
     throw new ApiError(res.status, (body as any).error || res.statusText);

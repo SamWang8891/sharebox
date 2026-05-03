@@ -1,7 +1,7 @@
 import { Hono } from "hono";
-import { eq } from "drizzle-orm";
+import { eq, isNull } from "drizzle-orm";
 import { createDb } from "../db";
-import { allowedUsers, user as userTable } from "../schema";
+import { allowedUsers, usersSync } from "../schema";
 import { requireAuth, requireAdmin } from "../middleware";
 import type { Env, UserInfo } from "../types";
 
@@ -12,7 +12,6 @@ type AdminEnv = {
 
 const app = new Hono<AdminEnv>();
 
-// All admin routes require auth + admin
 app.use("*", requireAuth, requireAdmin);
 
 // ── List allowed users ──────────────────────────────────────────────
@@ -62,29 +61,35 @@ app.delete("/users/:email", async (c) => {
   return c.json({ ok: true });
 });
 
-// ── List all registered users (from Better Auth) ────────────────────
+// ── List all registered users (from Neon Auth sync table) ───────────
 app.get("/all-users", async (c) => {
   const db = createDb(c.env.DATABASE_URL);
-  const users = await db.select().from(userTable);
+  // Only non-deleted Stack Auth users
+  const users = await db
+    .select()
+    .from(usersSync)
+    .where(isNull(usersSync.deletedAt));
+
   const adminEmails = c.env.ADMIN_EMAILS.split(",")
     .map((e) => e.trim().toLowerCase())
     .filter(Boolean);
-
   const allowed = await db.select().from(allowedUsers);
   const allowedEmails = new Set(allowed.map((a) => a.email));
 
   return c.json(
-    users.map((u) => ({
-      id: u.id,
-      name: u.name,
-      email: u.email,
-      image: u.image,
-      createdAt: u.createdAt.toISOString(),
-      isAdmin: adminEmails.includes(u.email.toLowerCase()),
-      isAllowed:
-        adminEmails.includes(u.email.toLowerCase()) ||
-        allowedEmails.has(u.email.toLowerCase()),
-    }))
+    users.map((u) => {
+      const email = u.email ?? "";
+      const lower = email.toLowerCase();
+      return {
+        id: u.id,
+        name: u.name,
+        email,
+        createdAt: u.createdAt?.toISOString() ?? null,
+        isAdmin: adminEmails.includes(lower),
+        isAllowed:
+          adminEmails.includes(lower) || allowedEmails.has(lower),
+      };
+    })
   );
 });
 

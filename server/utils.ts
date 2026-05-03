@@ -1,12 +1,12 @@
 import { nanoid } from "nanoid";
 import type { Env } from "./types";
 
-/** Get the auth/signing secret, supporting legacy BETTER_AUTH_SECRET */
-export function getAuthSecret(env: Env): string {
-  const secret = env.NEON_AUTH_SECRET ?? env.BETTER_AUTH_SECRET;
+/** Get the secret used to sign short-lived file access tokens. */
+export function getFileTokenSecret(env: Env): string {
+  const secret = env.FILE_TOKEN_SECRET ?? env.STACK_SECRET_SERVER_KEY;
   if (!secret) {
     throw new Error(
-      "Missing auth secret: set NEON_AUTH_SECRET (or legacy BETTER_AUTH_SECRET)"
+      "Missing token secret: set FILE_TOKEN_SECRET or STACK_SECRET_SERVER_KEY"
     );
   }
   return secret;

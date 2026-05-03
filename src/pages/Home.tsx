@@ -1,7 +1,6 @@
-import { Upload, Link, Lock, Clock, Box } from "lucide-react";
-import { signIn } from "../lib/auth-client";
+import { Upload, Link as LinkIcon, Lock, Clock, Box } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import type { CurrentUser } from "../lib/api";
-import { useNavigate } from "react-router-dom";
 
 export function Home({ user }: { user: CurrentUser | null }) {
   const navigate = useNavigate();
@@ -27,7 +26,7 @@ export function Home({ user }: { user: CurrentUser | null }) {
             desc: "Drag & drop or click to upload any file up to 80 MB",
           },
           {
-            icon: Link,
+            icon: LinkIcon,
             title: "Share Links",
             desc: "Get a short, shareable link for every upload",
           },
@@ -74,12 +73,12 @@ export function Home({ user }: { user: CurrentUser | null }) {
             </div>
           )
         ) : (
-          <button
-            onClick={() => signIn.social({ provider: "google" })}
+          <Link
+            to="/handler/sign-in"
             className="bg-primary hover:bg-primary-hover text-white px-6 py-3 rounded-xl text-sm font-medium transition-colors inline-flex items-center gap-2"
           >
-            Sign in with Google
-          </button>
+            Sign in
+          </Link>
         )}
       </div>
     </div>

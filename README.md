@@ -2,12 +2,10 @@
 
 Private file sharing on Cloudflare Pages + R2.
 
-> I still need some time to understand what my AI is coind and fix it myself I guess
-
 ## What it does
 
 - Public link access for uploaded files (`/f/:id`)
-- Google login for uploaders
+- Sign in via Neon Auth (Stack Auth)
 - Upload access restricted to:
   - admins from `ADMIN_EMAILS` (env)
   - emails added in Admin panel (`allowed_users`)
@@ -22,61 +20,67 @@ Private file sharing on Cloudflare Pages + R2.
 
 - **Frontend:** Vite + React + TypeScript + Tailwind
 - **API:** Hono on Cloudflare Pages Functions
-- **Auth:** Neon Auth (Google OAuth)
+- **Auth:** Neon Auth (Stack Auth) via `@stackframe/react`
 - **DB:** Neon Postgres
 - **Storage:** Cloudflare R2 (`R2_BUCKET` binding)
 
 ## Project structure
 
 - `src/` → frontend
-- `server/` → Hono app + auth + routes
+- `server/` → Hono app + auth verification + routes
 - `functions/api/[[route]].ts` → Pages function entrypoint
-- `db/schema.sql` → SQL schema
-
-## Env vars (`.dev.vars`)
-
-Copy `.dev.vars.example` to `.dev.vars` and fill values:
-
-```bash
-DATABASE_URL=postgresql://...
-ADMIN_EMAILS=admin@example.com
-NEON_AUTH_URL=http://localhost:5173
-NEON_AUTH_SECRET=replace-with-a-long-random-secret
-GOOGLE_CLIENT_ID=...
-GOOGLE_CLIENT_SECRET=...
-MAX_UPLOAD_SIZE=83886080
-```
-
-For production, set the same secrets in Cloudflare Pages project settings.
+- `db/schema.sql` → SQL schema (Neon Auth syncs `neon_auth.users_sync` automatically)
 
 ## Setup
 
-1. Create Neon project and run `db/schema.sql`.
-2. Create Google OAuth credentials (authorized redirect URI must point to your deployed domain).
-3. Create R2 buckets matching `wrangler.toml`:
+1. **Create a Neon project** and enable **Neon Auth** in the Neon dashboard → Auth tab. This:
+   - Creates the `neon_auth.users_sync` table automatically
+   - Gives you Stack Auth credentials: `Project ID`, `Publishable Client Key`, `Secret Server Key`
+2. **Run `db/schema.sql`** against your Neon database (creates `files` and `allowed_users` tables).
+3. **Configure auth providers** in your Stack Auth project (e.g. Google) and set the redirect URL to your deployed origin (e.g. `https://share.smashit.tw`).
+4. **Create R2 buckets** matching `wrangler.toml`:
    - `sharebox-files`
    - `sharebox-files-preview`
-4. Install deps:
+5. **Copy `.dev.vars.example` → `.dev.vars`** and fill in the values.
+6. **Install deps:**
    ```bash
    npm install
    ```
-5. Run dev (full stack — builds the frontend, watches for changes, and runs the Pages function locally with R2 + auth):
+7. **Run dev** (full stack: builds frontend, watches for changes, runs Pages function locally with R2 + auth):
    ```bash
    npm run dev
    ```
-   Dev server runs at http://localhost:5173. The first build takes a few seconds before the server is reachable.
+   App runs at http://localhost:5173. Initial build takes a few seconds.
 
-   Frontend-only (no API, no R2 — useful only for tweaking pure UI):
+   Frontend-only (no API):
    ```bash
    npm run dev:frontend
    ```
-6. Deploy:
+8. **Deploy:**
    ```bash
    npm run deploy
    ```
 
+## Env vars
+
+`.dev.vars` (local) — and matching values in **Cloudflare Pages → Settings → Environment variables** for production:
+
+| Variable | Where | Description |
+|---|---|---|
+| `DATABASE_URL` | server | Neon Postgres connection string |
+| `ADMIN_EMAILS` | server | Comma-separated admin emails |
+| `STACK_PROJECT_ID` | server | From Neon Auth dashboard |
+| `STACK_PUBLISHABLE_CLIENT_KEY` | server | From Neon Auth dashboard |
+| `STACK_SECRET_SERVER_KEY` | server (encrypted) | From Neon Auth dashboard |
+| `VITE_STACK_PROJECT_ID` | build-time | Same value as above (bundled into client) |
+| `VITE_STACK_PUBLISHABLE_CLIENT_KEY` | build-time | Same value as above (bundled into client) |
+| `MAX_UPLOAD_SIZE` | server | Optional, in bytes |
+
+The `VITE_*` vars must be present at **build time** for the frontend bundle. On Cloudflare Pages, set them as plain (non-secret) environment variables on the project so they're available during the build.
+
 ## Notes
 
-- API is mounted under `/api/*`.
-- Auth endpoints are under `/api/auth/*`.
+- API mounted under `/api/*`.
+- Stack Auth handler routes mounted at `/handler/*` (sign-in, sign-up, OAuth callback).
 - Public file route in frontend is `/f/:id`.
+- The `nodejs_compat` compatibility flag must be enabled both in `wrangler.toml` (for `wrangler pages dev`) and in **Cloudflare dashboard → Pages → Settings → Functions → Compatibility flags** (for production).

@@ -10,7 +10,7 @@ import {
   verifyPassword,
   createAccessToken,
   verifyAccessToken,
-  getAuthSecret,
+  getFileTokenSecret,
 } from "../utils";
 import type { Env, UserInfo } from "../types";
 
@@ -176,7 +176,7 @@ app.post("/:id/verify", async (c) => {
 
   const { token, expires } = await createAccessToken(
     fileId,
-    getAuthSecret(c.env)
+    getFileTokenSecret(c.env)
   );
   return c.json({ token, expires });
 });
@@ -202,7 +202,7 @@ app.get("/:id/raw", async (c) => {
     const valid = await verifyAccessToken(
       fileId,
       token,
-      getAuthSecret(c.env)
+      getFileTokenSecret(c.env)
     );
     if (!valid) return c.json({ error: "Invalid or expired token" }, 401);
   }
