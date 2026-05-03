@@ -1,8 +1,7 @@
-import { createAuthClient } from "@neondatabase/auth";
-import { BetterAuthReactAdapter } from "@neondatabase/auth/react/adapters";
+import { createAuthClient } from "better-auth/react";
 
-export const authClient = createAuthClient(window.location.origin, {
-  adapter: BetterAuthReactAdapter(),
+export const authClient = createAuthClient({
+  baseURL: window.location.origin,
 });
 
 export const { signIn, signOut, useSession } = authClient;

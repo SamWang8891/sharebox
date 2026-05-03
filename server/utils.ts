@@ -1,4 +1,16 @@
 import { nanoid } from "nanoid";
+import type { Env } from "./types";
+
+/** Get the auth/signing secret, supporting legacy BETTER_AUTH_SECRET */
+export function getAuthSecret(env: Env): string {
+  const secret = env.NEON_AUTH_SECRET ?? env.BETTER_AUTH_SECRET;
+  if (!secret) {
+    throw new Error(
+      "Missing auth secret: set NEON_AUTH_SECRET (or legacy BETTER_AUTH_SECRET)"
+    );
+  }
+  return secret;
+}
 
 /** Generate a short file ID (8 chars, URL-safe) */
 export function generateFileId(): string {
@@ -89,7 +101,7 @@ export async function verifyAccessToken(
   );
   const data = encoder.encode(`${fileId}|${expires}`);
   const sigBytes = base64urlToUint8(sig);
-  return crypto.subtle.verify("HMAC", key, sigBytes, data);
+  return crypto.subtle.verify("HMAC", key, sigBytes as BufferSource, data);
 }
 
 function uint8ToBase64url(arr: Uint8Array): string {

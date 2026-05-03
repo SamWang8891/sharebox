@@ -10,6 +10,7 @@ import {
   verifyPassword,
   createAccessToken,
   verifyAccessToken,
+  getAuthSecret,
 } from "../utils";
 import type { Env, UserInfo } from "../types";
 
@@ -175,7 +176,7 @@ app.post("/:id/verify", async (c) => {
 
   const { token, expires } = await createAccessToken(
     fileId,
-    c.env.BETTER_AUTH_SECRET
+    getAuthSecret(c.env)
   );
   return c.json({ token, expires });
 });
@@ -201,7 +202,7 @@ app.get("/:id/raw", async (c) => {
     const valid = await verifyAccessToken(
       fileId,
       token,
-      c.env.BETTER_AUTH_SECRET
+      getAuthSecret(c.env)
     );
     if (!valid) return c.json({ error: "Invalid or expired token" }, 401);
   }

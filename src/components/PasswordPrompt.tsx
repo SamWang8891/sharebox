@@ -5,19 +5,21 @@ export function PasswordPrompt({
   onSubmit,
   error,
 }: {
-  onSubmit: (password: string) => void;
+  onSubmit: (password: string) => Promise<void> | void;
   error?: string | null;
 }) {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!password.trim()) return;
+    if (!password.trim() || loading) return;
     setLoading(true);
-    onSubmit(password);
-    // Loading state will be reset by parent when error changes
-    setTimeout(() => setLoading(false), 2000);
+    try {
+      await onSubmit(password);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

@@ -60,9 +60,15 @@ For production, set the same secrets in Cloudflare Pages project settings.
    ```bash
    npm install
    ```
-5. Run dev:
+5. Run dev (full stack — builds the frontend, watches for changes, and runs the Pages function locally with R2 + auth):
    ```bash
    npm run dev
+   ```
+   Dev server runs at http://localhost:5173. The first build takes a few seconds before the server is reachable.
+
+   Frontend-only (no API, no R2 — useful only for tweaking pure UI):
+   ```bash
+   npm run dev:frontend
    ```
 6. Deploy:
    ```bash
