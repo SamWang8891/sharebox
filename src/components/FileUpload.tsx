@@ -82,7 +82,7 @@ export function FileUpload({ onUploaded }: { onUploaded: () => void }) {
         onDrop={onDrop}
         onClick={() => inputRef.current?.click()}
         className={`
-          border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-all
+          border-2 border-dashed rounded-xl p-8 sm:p-12 text-center cursor-pointer transition-all
           ${
             dragOver
               ? "border-primary bg-primary/10"
