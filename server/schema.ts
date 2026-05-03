@@ -1,25 +1,10 @@
 import {
   pgTable,
-  pgSchema,
   text,
   timestamp,
   integer,
   bigint,
 } from "drizzle-orm/pg-core";
-
-// ── Neon Auth synced table (read-only, managed by Neon) ─────────────
-const neonAuth = pgSchema("neon_auth");
-
-export const usersSync = neonAuth.table("users_sync", {
-  id: text("id").primaryKey(),
-  name: text("name"),
-  email: text("email"),
-  createdAt: timestamp("created_at"),
-  updatedAt: timestamp("updated_at"),
-  deletedAt: timestamp("deleted_at"),
-});
-
-// ── ShareBox tables ─────────────────────────────────────────────────
 
 export const files = pgTable("files", {
   id: text("id").primaryKey(),

@@ -1,5 +1,6 @@
 import { Upload, Link as LinkIcon, Lock, Clock, Box } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import { SignInButton, SignedIn, SignedOut } from "@clerk/clerk-react";
 import type { CurrentUser } from "../lib/api";
 
 export function Home({ user }: { user: CurrentUser | null }) {
@@ -53,8 +54,8 @@ export function Home({ user }: { user: CurrentUser | null }) {
       </div>
 
       <div className="text-center">
-        {user ? (
-          user.isApproved ? (
+        <SignedIn>
+          {user?.isApproved ? (
             <button
               onClick={() => navigate("/dashboard")}
               className="bg-primary hover:bg-primary-hover text-white px-6 py-3 rounded-xl text-sm font-medium transition-colors"
@@ -67,19 +68,20 @@ export function Home({ user }: { user: CurrentUser | null }) {
                 Pending Approval
               </p>
               <p className="text-sm text-text-muted">
-                You're signed in as {user.email}, but your account hasn't been
-                approved yet. Contact the admin for access.
+                You're signed in
+                {user?.email ? ` as ${user.email}` : ""}, but your account hasn't
+                been approved yet. Contact the admin for access.
               </p>
             </div>
-          )
-        ) : (
-          <Link
-            to="/handler/sign-in"
-            className="bg-primary hover:bg-primary-hover text-white px-6 py-3 rounded-xl text-sm font-medium transition-colors inline-flex items-center gap-2"
-          >
-            Sign in
-          </Link>
-        )}
+          )}
+        </SignedIn>
+        <SignedOut>
+          <SignInButton mode="modal">
+            <button className="bg-primary hover:bg-primary-hover text-white px-6 py-3 rounded-xl text-sm font-medium transition-colors inline-flex items-center gap-2">
+              Sign in
+            </button>
+          </SignInButton>
+        </SignedOut>
       </div>
     </div>
   );

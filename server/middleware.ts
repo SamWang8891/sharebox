@@ -2,7 +2,7 @@ import { createMiddleware } from "hono/factory";
 import { eq } from "drizzle-orm";
 import { createDb } from "./db";
 import { allowedUsers } from "./schema";
-import { verifyStackToken, extractBearerToken } from "./stack-auth";
+import { verifyClerkToken, extractBearerToken } from "./clerk-auth";
 import type { Env, UserInfo } from "./types";
 
 type AuthEnv = {
@@ -23,20 +23,20 @@ export const requireAuth = createMiddleware<AuthEnv>(async (c, next) => {
     return c.json({ error: "Unauthorized" }, 401);
   }
 
-  const stackUser = await verifyStackToken(c.env, token);
-  if (!stackUser) {
+  const clerkUser = await verifyClerkToken(c.env, token);
+  if (!clerkUser) {
     return c.json({ error: "Invalid or expired session" }, 401);
   }
 
   const adminEmails = adminEmailsFromEnv(c.env);
-  const isAdmin = adminEmails.includes(stackUser.email.toLowerCase());
+  const isAdmin = adminEmails.includes(clerkUser.email.toLowerCase());
 
   if (!isAdmin) {
     const db = createDb(c.env.DATABASE_URL);
     const allowed = await db
       .select()
       .from(allowedUsers)
-      .where(eq(allowedUsers.email, stackUser.email.toLowerCase()));
+      .where(eq(allowedUsers.email, clerkUser.email.toLowerCase()));
     if (allowed.length === 0) {
       return c.json(
         { error: "Access denied. Contact admin for approval.", approved: false },
@@ -45,7 +45,7 @@ export const requireAuth = createMiddleware<AuthEnv>(async (c, next) => {
     }
   }
 
-  c.set("user", { ...stackUser, isAdmin });
+  c.set("user", { ...clerkUser, isAdmin });
   await next();
 });
 

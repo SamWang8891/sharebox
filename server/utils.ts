@@ -3,10 +3,10 @@ import type { Env } from "./types";
 
 /** Get the secret used to sign short-lived file access tokens. */
 export function getFileTokenSecret(env: Env): string {
-  const secret = env.FILE_TOKEN_SECRET ?? env.STACK_SECRET_SERVER_KEY;
+  const secret = env.FILE_TOKEN_SECRET ?? env.CLERK_SECRET_KEY;
   if (!secret) {
     throw new Error(
-      "Missing token secret: set FILE_TOKEN_SECRET or STACK_SECRET_SERVER_KEY"
+      "Missing token secret: set FILE_TOKEN_SECRET or CLERK_SECRET_KEY"
     );
   }
   return secret;

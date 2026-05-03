@@ -4,14 +4,12 @@ DATABASE_URL=postgresql://user:pass@ep-xxx.us-east-2.aws.neon.tech/neondb?sslmod
 # Comma-separated emails that get admin access
 ADMIN_EMAILS=admin@example.com
 
-# Stack Auth (Neon Auth) — get these from Neon dashboard → Auth tab
-STACK_PROJECT_ID=your-stack-project-id
-STACK_PUBLISHABLE_CLIENT_KEY=your-publishable-client-key
-STACK_SECRET_SERVER_KEY=your-secret-server-key
+# Clerk (auth) — get from https://dashboard.clerk.com → your app → API Keys
+CLERK_PUBLISHABLE_KEY=pk_test_xxx
+CLERK_SECRET_KEY=sk_test_xxx
 
-# Frontend needs the public Stack keys (Vite env vars, embedded in the bundle)
-VITE_STACK_PROJECT_ID=your-stack-project-id
-VITE_STACK_PUBLISHABLE_CLIENT_KEY=your-publishable-client-key
+# Frontend needs the publishable key as a Vite build-time var (same value)
+VITE_CLERK_PUBLISHABLE_KEY=pk_test_xxx
 
 # Max upload size in bytes (default 80MB)
 MAX_UPLOAD_SIZE=83886080

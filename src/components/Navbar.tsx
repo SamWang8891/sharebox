@@ -1,11 +1,10 @@
-import { Link, useNavigate } from "react-router-dom";
-import { Upload, Shield, LogOut, LogIn, Box } from "lucide-react";
-import { useUser } from "@stackframe/react";
+import { Link } from "react-router-dom";
+import { Upload, Shield, LogOut, Box } from "lucide-react";
+import { SignInButton, SignedIn, SignedOut, useClerk } from "@clerk/clerk-react";
 import type { CurrentUser } from "../lib/api";
 
 export function Navbar({ user }: { user: CurrentUser | null }) {
-  const stackUser = useUser();
-  const navigate = useNavigate();
+  const { signOut } = useClerk();
 
   return (
     <nav className="border-b border-border bg-surface-light/50 backdrop-blur-sm sticky top-0 z-50">
@@ -39,38 +38,37 @@ export function Navbar({ user }: { user: CurrentUser | null }) {
             </Link>
           )}
 
-          {user ? (
+          <SignedIn>
             <div className="flex items-center gap-3">
-              {user.image && (
+              {user?.image && (
                 <img
                   src={user.image}
                   alt={user.name}
                   className="w-7 h-7 rounded-full"
                 />
               )}
-              <span className="text-sm text-text-muted hidden sm:inline">
-                {user.name}
-              </span>
+              {user?.name && (
+                <span className="text-sm text-text-muted hidden sm:inline">
+                  {user.name}
+                </span>
+              )}
               <button
-                onClick={async () => {
-                  await stackUser?.signOut();
-                  navigate("/");
-                }}
+                onClick={() => signOut({ redirectUrl: "/" })}
                 className="text-text-muted hover:text-text transition-colors"
                 title="Sign out"
               >
                 <LogOut className="w-4 h-4" />
               </button>
             </div>
-          ) : (
-            <Link
-              to="/handler/sign-in"
-              className="flex items-center gap-1.5 bg-primary hover:bg-primary-hover text-white text-sm px-3 py-1.5 rounded-lg transition-colors"
-            >
-              <LogIn className="w-4 h-4" />
-              Sign in
-            </Link>
-          )}
+          </SignedIn>
+
+          <SignedOut>
+            <SignInButton mode="modal">
+              <button className="flex items-center gap-1.5 bg-primary hover:bg-primary-hover text-white text-sm px-3 py-1.5 rounded-lg transition-colors">
+                Sign in
+              </button>
+            </SignInButton>
+          </SignedOut>
         </div>
       </div>
     </nav>

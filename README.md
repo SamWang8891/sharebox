@@ -5,7 +5,7 @@ Private file sharing on Cloudflare Pages + R2.
 ## What it does
 
 - Public link access for uploaded files (`/f/:id`)
-- Sign in via Neon Auth (Stack Auth)
+- Sign in via Clerk (Google / GitHub / Discord / etc.)
 - Upload access restricted to:
   - admins from `ADMIN_EMAILS` (env)
   - emails added in Admin panel (`allowed_users`)
@@ -20,7 +20,7 @@ Private file sharing on Cloudflare Pages + R2.
 
 - **Frontend:** Vite + React + TypeScript + Tailwind
 - **API:** Hono on Cloudflare Pages Functions
-- **Auth:** Neon Auth (Stack Auth) via `@stackframe/react`
+- **Auth:** Clerk (JWT verified server-side via JWKS)
 - **DB:** Neon Postgres
 - **Storage:** Cloudflare R2 (`R2_BUCKET` binding)
 
@@ -29,15 +29,13 @@ Private file sharing on Cloudflare Pages + R2.
 - `src/` → frontend
 - `server/` → Hono app + auth verification + routes
 - `functions/api/[[route]].ts` → Pages function entrypoint
-- `db/schema.sql` → SQL schema (Neon Auth syncs `neon_auth.users_sync` automatically)
+- `db/schema.sql` → SQL schema
 
 ## Setup
 
-1. **Create a Neon project** and enable **Neon Auth** in the Neon dashboard → Auth tab. This:
-   - Creates the `neon_auth.users_sync` table automatically
-   - Gives you Stack Auth credentials: `Project ID`, `Publishable Client Key`, `Secret Server Key`
-2. **Run `db/schema.sql`** against your Neon database (creates `files` and `allowed_users` tables).
-3. **Configure auth providers** in your Stack Auth project (e.g. Google) and set the redirect URL to your deployed origin (e.g. `https://share.smashit.tw`).
+1. **Create a Neon project** and copy the connection string.
+2. **Run `db/schema.sql`** against your Neon database.
+3. **Create a Clerk app** at https://dashboard.clerk.com. Enable the OAuth providers you want (Google, GitHub, Discord, etc.). Copy your **Publishable key** (`pk_...`) and **Secret key** (`sk_...`) from the API Keys page.
 4. **Create R2 buckets** matching `wrangler.toml`:
    - `sharebox-files`
    - `sharebox-files-preview`
@@ -46,11 +44,11 @@ Private file sharing on Cloudflare Pages + R2.
    ```bash
    npm install
    ```
-7. **Run dev** (full stack: builds frontend, watches for changes, runs Pages function locally with R2 + auth):
+7. **Run dev** (full stack — builds frontend, watches for changes, runs Pages function locally with R2 + auth):
    ```bash
    npm run dev
    ```
-   App runs at http://localhost:5173. Initial build takes a few seconds.
+   App runs at http://localhost:5173.
 
    Frontend-only (no API):
    ```bash
@@ -63,24 +61,22 @@ Private file sharing on Cloudflare Pages + R2.
 
 ## Env vars
 
-`.dev.vars` (local) — and matching values in **Cloudflare Pages → Settings → Environment variables** for production:
+Set in `.dev.vars` (local) and **Cloudflare Pages → Settings → Environment variables** (production):
 
-| Variable | Where | Description |
+| Variable | Encrypted | Purpose |
 |---|---|---|
-| `DATABASE_URL` | server | Neon Postgres connection string |
-| `ADMIN_EMAILS` | server | Comma-separated admin emails |
-| `STACK_PROJECT_ID` | server | From Neon Auth dashboard |
-| `STACK_PUBLISHABLE_CLIENT_KEY` | server | From Neon Auth dashboard |
-| `STACK_SECRET_SERVER_KEY` | server (encrypted) | From Neon Auth dashboard |
-| `VITE_STACK_PROJECT_ID` | build-time | Same value as above (bundled into client) |
-| `VITE_STACK_PUBLISHABLE_CLIENT_KEY` | build-time | Same value as above (bundled into client) |
-| `MAX_UPLOAD_SIZE` | server | Optional, in bytes |
+| `DATABASE_URL` | yes | Neon Postgres connection string |
+| `ADMIN_EMAILS` | no | Comma-separated admin emails |
+| `CLERK_PUBLISHABLE_KEY` | no | Clerk publishable key (`pk_...`) — used server-side to derive the JWKS URL |
+| `CLERK_SECRET_KEY` | yes | Clerk secret key (`sk_...`) — used server-side to fetch user details |
+| `VITE_CLERK_PUBLISHABLE_KEY` | no | Same value as `CLERK_PUBLISHABLE_KEY`. Read by Vite at build time and embedded into the JS bundle. |
+| `MAX_UPLOAD_SIZE` | no | Optional, in bytes (default 80MB) |
 
-The `VITE_*` vars must be present at **build time** for the frontend bundle. On Cloudflare Pages, set them as plain (non-secret) environment variables on the project so they're available during the build.
+The `VITE_*` var must be present at **build time** for the frontend bundle. On Cloudflare Pages, set it as a plain (non-secret) env var on the project so it's available during the build.
 
 ## Notes
 
 - API mounted under `/api/*`.
-- Stack Auth handler routes mounted at `/handler/*` (sign-in, sign-up, OAuth callback).
 - Public file route in frontend is `/f/:id`.
-- The `nodejs_compat` compatibility flag must be enabled both in `wrangler.toml` (for `wrangler pages dev`) and in **Cloudflare dashboard → Pages → Settings → Functions → Compatibility flags** (for production).
+- Sign-in opens as a Clerk modal; no callback URL configuration needed.
+- The `nodejs_compat` compatibility flag must be enabled in **Cloudflare dashboard → Pages → Settings → Functions → Compatibility flags** for production (in addition to `wrangler.toml` for local dev).

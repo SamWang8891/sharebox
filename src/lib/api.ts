@@ -1,12 +1,12 @@
-import { stackApp } from "./stack";
-
 const BASE = "/api";
 
+/** Read the Clerk session token from the global Clerk instance, if present. */
 async function authHeader(): Promise<Record<string, string>> {
-  const user = await stackApp.getUser();
-  if (!user) return {};
-  const { accessToken } = await user.getAuthJson();
-  return accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
+  const clerk = (window as unknown as { Clerk?: any }).Clerk;
+  const session = clerk?.session;
+  if (!session) return {};
+  const token = await session.getToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {

@@ -1,17 +1,8 @@
--- ShareBox schema (Neon Auth / Stack Auth compatible)
---
--- Prerequisite: enable Neon Auth in your Neon project. Neon will create
--- the `neon_auth` schema and a `users_sync` table that mirrors Stack Auth
--- users. We don't manage that table — it's read-only and auto-synced.
---
--- This file only creates the ShareBox-specific tables. Run it once in your
--- Neon database after enabling Neon Auth.
+-- ShareBox schema
+-- Run this once in your Neon Postgres database before first launch.
+-- User identity is managed by Clerk; we only store the Clerk user id
+-- (text) alongside our own data — no users table needed here.
 
--- Files uploaded by approved users.
--- user_id stores the Stack Auth user id (text/uuid). We don't FK to
--- neon_auth.users_sync because it's a sync target — rows can disappear
--- if a user is deleted in Stack Auth, and we want the file row to remain
--- recoverable rather than cascade-deleted unexpectedly.
 CREATE TABLE IF NOT EXISTS files (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL,
@@ -26,7 +17,6 @@ CREATE TABLE IF NOT EXISTS files (
   access_count INT NOT NULL DEFAULT 0
 );
 
--- Emails approved to upload (in addition to ADMIN_EMAILS).
 CREATE TABLE IF NOT EXISTS allowed_users (
   email TEXT PRIMARY KEY,
   added_by TEXT,
