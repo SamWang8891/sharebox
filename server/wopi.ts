@@ -129,9 +129,20 @@ export async function getEditActionUrl(
     Date.now() - discoveryCache.fetchedAt > DISCOVERY_TTL_MS;
 
   if (stale) {
-    const res = await fetch(`${collaboraUrl}/hosting/discovery`);
-    if (!res.ok) return null;
-    const xml = await res.text();
+    let xml: string;
+    try {
+      const res = await fetch(`${collaboraUrl}/hosting/discovery`);
+      if (!res.ok) {
+        console.error(
+          `Collabora discovery failed: ${res.status} ${res.statusText}`
+        );
+        return null;
+      }
+      xml = await res.text();
+    } catch (err) {
+      console.error("Collabora discovery fetch threw:", err);
+      return null;
+    }
     discoveryCache = {
       url: collaboraUrl,
       actions: parseDiscovery(xml),
