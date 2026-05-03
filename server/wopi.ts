@@ -131,7 +131,13 @@ export async function getEditActionUrl(
   if (stale) {
     let xml: string;
     try {
-      const res = await fetch(`${collaboraUrl}/hosting/discovery`);
+      // Hard 5s timeout so a slow Collabora can't kill the worker.
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 5000);
+      const res = await fetch(`${collaboraUrl}/hosting/discovery`, {
+        signal: ctrl.signal,
+      });
+      clearTimeout(timer);
       if (!res.ok) {
         console.error(
           `Collabora discovery failed: ${res.status} ${res.statusText}`

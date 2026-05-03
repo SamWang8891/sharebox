@@ -185,51 +185,74 @@ app.get("/:id", async (c) => {
 // Returns the iframe URL the frontend should embed and the WOPI access
 // token Collabora will use to call back into our /wopi/* endpoints.
 app.get("/:id/edit", requireAuth, async (c) => {
-  const user = c.get("user");
-  const fileId = c.req.param("id");
+  try {
+    const user = c.get("user");
+    const fileId = c.req.param("id");
 
-  if (!c.env.COLLABORA_URL) {
-    return c.json({ error: "Edit feature is not configured" }, 501);
-  }
+    if (!c.env.COLLABORA_URL) {
+      return c.json({ error: "Edit feature is not configured" }, 501);
+    }
 
-  const db = createDb(c.env.DATABASE_URL);
-  const [file] = await db
-    .select()
-    .from(files)
-    .where(eq(files.id, fileId))
-    .limit(1);
-  if (!file) return c.json({ error: "File not found" }, 404);
-  if (file.userId !== user.id && !user.isAdmin) {
-    return c.json({ error: "Only the owner can edit this file" }, 403);
-  }
-  if (file.passwordHash) {
-    return c.json({ error: "Password-protected files cannot be edited" }, 400);
-  }
+    const db = createDb(c.env.DATABASE_URL);
+    const [file] = await db
+      .select()
+      .from(files)
+      .where(eq(files.id, fileId))
+      .limit(1);
+    if (!file) return c.json({ error: "File not found" }, 404);
+    if (file.userId !== user.id && !user.isAdmin) {
+      return c.json({ error: "Only the owner can edit this file" }, 403);
+    }
+    if (file.passwordHash) {
+      return c.json(
+        { error: "Password-protected files cannot be edited" },
+        400
+      );
+    }
 
-  const ext = getExtension(file.originalName);
-  if (!isEditableExtension(file.originalName)) {
-    return c.json({ error: "This file type is not editable" }, 400);
-  }
+    const ext = getExtension(file.originalName);
+    if (!isEditableExtension(file.originalName)) {
+      return c.json({ error: "This file type is not editable" }, 400);
+    }
 
-  const actionUrl = await getEditActionUrl(c.env, ext);
-  if (!actionUrl) {
+    const actionUrl = await getEditActionUrl(c.env, ext);
+    if (!actionUrl) {
+      return c.json(
+        {
+          error:
+            "Collabora discovery failed or this file type isn't in discovery. Check that the worker can reach " +
+            c.env.COLLABORA_URL +
+            "/hosting/discovery",
+        },
+        502
+      );
+    }
+
+    const { token, exp } = await createWopiToken(c.env, {
+      fileId,
+      userId: user.id,
+      write: true,
+    });
+
+    const origin = new URL(c.req.url).origin;
+    const wopiSrc = `${origin}/wopi/files/${fileId}`;
+
+    return c.json({
+      actionUrl,
+      wopiSrc,
+      accessToken: token,
+      accessTokenTtl: exp * 1000,
+    });
+  } catch (err) {
+    console.error("/:id/edit handler threw:", err);
     return c.json(
-      { error: "Collabora does not support this file type or discovery failed" },
-      502
+      {
+        error: "Edit setup failed",
+        message: err instanceof Error ? err.message : String(err),
+      },
+      500
     );
   }
-
-  const { token, exp } = await createWopiToken(c.env, {
-    fileId,
-    userId: user.id,
-    write: true,
-  });
-
-  // Build absolute WOPI src URL — must match what Collabora will call back to.
-  const origin = new URL(c.req.url).origin;
-  const wopiSrc = `${origin}/wopi/files/${fileId}`;
-
-  return c.json({ actionUrl, wopiSrc, accessToken: token, accessTokenTtl: exp * 1000 });
 });
 
 // ── Verify password & get access token ──────────────────────────────
