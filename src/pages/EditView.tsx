@@ -62,9 +62,17 @@ export function EditView() {
     );
   }
 
-  // Append WOPISrc as a query string per WOPI spec.
-  const sep = session.actionUrl.includes("?") ? "&" : "?";
-  const iframeSrc = `${session.actionUrl}${sep}WOPISrc=${encodeURIComponent(session.wopiSrc)}`;
+  // Append WOPISrc as a query param. Discovery action urlsrc may end in
+  // "?" or "&" already (Collabora convention); handle each cleanly.
+  const wopiParam = `WOPISrc=${encodeURIComponent(session.wopiSrc)}`;
+  let iframeSrc: string;
+  if (session.actionUrl.endsWith("?") || session.actionUrl.endsWith("&")) {
+    iframeSrc = `${session.actionUrl}${wopiParam}`;
+  } else if (session.actionUrl.includes("?")) {
+    iframeSrc = `${session.actionUrl}&${wopiParam}`;
+  } else {
+    iframeSrc = `${session.actionUrl}?${wopiParam}`;
+  }
 
   return (
     <div className="fixed inset-0 flex flex-col bg-surface z-40">
