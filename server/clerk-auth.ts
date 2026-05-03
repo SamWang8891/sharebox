@@ -50,11 +50,19 @@ async function fetchClerkUser(
   env: Env,
   userId: string
 ): Promise<ClerkApiUser | null> {
-  const res = await fetch(`https://api.clerk.com/v1/users/${userId}`, {
-    headers: { Authorization: `Bearer ${env.CLERK_SECRET_KEY}` },
-  });
-  if (!res.ok) return null;
-  return (await res.json()) as ClerkApiUser;
+  try {
+    const res = await fetch(`https://api.clerk.com/v1/users/${userId}`, {
+      headers: { Authorization: `Bearer ${env.CLERK_SECRET_KEY}` },
+    });
+    if (!res.ok) {
+      console.error(`Clerk users API failed: ${res.status} ${res.statusText}`);
+      return null;
+    }
+    return (await res.json()) as ClerkApiUser;
+  } catch (err) {
+    console.error("Clerk users API fetch threw:", err);
+    return null;
+  }
 }
 
 /**

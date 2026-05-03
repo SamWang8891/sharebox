@@ -16,6 +16,19 @@ type AppEnv = {
 
 const app = new Hono<AppEnv>();
 
+// Top-level error handler — surface the actual error as JSON instead of
+// letting Cloudflare return a generic 502 HTML page.
+app.onError((err, c) => {
+  console.error("Unhandled error:", err);
+  return c.json(
+    {
+      error: "Internal server error",
+      message: err instanceof Error ? err.message : String(err),
+    },
+    500
+  );
+});
+
 app.use("/api/*", cors());
 
 // ── Current user info (includes approval status) ────────────────────
