@@ -1,6 +1,6 @@
 # ShareBox
 
-Self-hosted private file sharing on Cloudflare Pages + R2. Authenticated uploads, public download links, optional passwords and expiry, and (optionally) in-browser editing of office documents via Collabora.
+Self-hosted (basically all cloud services) private file sharing on Cloudflare Pages + R2. Authenticated uploads, public download links, optional passwords and expiry, and (optionally) in-browser editing of office documents via Collabora.
 
 ```
 Browser ──▶ Cloudflare Pages (React)
