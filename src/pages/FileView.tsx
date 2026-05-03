@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { PasswordPrompt } from "../components/PasswordPrompt";
 import { CodePreview, isTextLike } from "../components/CodePreview";
+import { HeicPreview, isHeic } from "../components/HeicPreview";
 import "highlight.js/styles/github-dark.css";
 import {
   getFileInfo,
@@ -79,7 +80,8 @@ export function FileView() {
   }
 
   const rawUrl = getRawFileUrl(file.id, accessToken ?? undefined);
-  const isImage = file.mimeType?.startsWith("image/");
+  const heic = isHeic(file.mimeType, file.originalName);
+  const isImage = !heic && file.mimeType?.startsWith("image/");
   const isVideo = file.mimeType?.startsWith("video/");
   const isAudio = file.mimeType?.startsWith("audio/");
   const isPdf = file.mimeType === "application/pdf";
@@ -122,6 +124,8 @@ export function FileView() {
       </div>
 
       <div className="bg-surface-light rounded-xl border border-border overflow-hidden">
+        {heic && <HeicPreview url={rawUrl} alt={file.originalName} />}
+
         {isImage && (
           <div className="flex items-center justify-center p-4 bg-black/20">
             <img
@@ -150,7 +154,7 @@ export function FileView() {
           />
         )}
 
-        {!isImage && !isVideo && !isAudio && !isPdf && isCode && (
+        {!heic && !isImage && !isVideo && !isAudio && !isPdf && isCode && (
           <CodePreview
             url={rawUrl}
             filename={file.originalName}
@@ -158,7 +162,7 @@ export function FileView() {
           />
         )}
 
-        {!isImage && !isVideo && !isAudio && !isPdf && !isCode && (
+        {!heic && !isImage && !isVideo && !isAudio && !isPdf && !isCode && (
           <div className="p-12 text-center text-text-muted">
             <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
             <p className="text-sm">
