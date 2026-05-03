@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Loader2, AlertTriangle } from "lucide-react";
+import { Loader2, AlertTriangle, Download } from "lucide-react";
 
 export function isHeic(mimeType: string | null, filename: string): boolean {
   if (
@@ -37,19 +37,21 @@ export function HeicPreview({
         const res = await fetch(url);
         if (!res.ok) throw new Error("Failed to fetch image");
         const blob = await res.blob();
-        // Lazy-load the converter; ~700 KB, only fetched when viewing a HEIC.
-        const heic2any = (await import("heic2any")).default;
+        // Lazy-load the converter; only fetched when viewing a HEIC.
+        const { heicTo } = await import("heic-to");
         if (cancelled) return;
-        const converted = (await heic2any({
+        const converted = await heicTo({
           blob,
-          toType: "image/jpeg",
+          type: "image/jpeg",
           quality: 0.9,
-        })) as Blob | Blob[];
-        const result = Array.isArray(converted) ? converted[0] : converted;
-        objectUrl = URL.createObjectURL(result);
+        });
+        objectUrl = URL.createObjectURL(converted);
         if (!cancelled) setImgUrl(objectUrl);
       } catch (err: any) {
-        if (!cancelled) setError(err?.message || "Could not decode HEIC image");
+        if (!cancelled) {
+          const msg = err?.message || String(err);
+          setError(msg);
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -73,14 +75,22 @@ export function HeicPreview({
 
   if (error || !imgUrl) {
     return (
-      <div className="flex flex-col items-center justify-center p-12 gap-3 text-center">
+      <div className="flex flex-col items-center justify-center p-8 sm:p-12 gap-3 text-center">
         <AlertTriangle className="w-8 h-8 text-danger" />
-        <p className="text-sm text-text-muted">
-          {error || "Could not preview HEIC image"}
+        <p className="text-sm font-medium">Could not preview HEIC</p>
+        <p className="text-xs text-text-muted max-w-md break-words">
+          {error || "Unsupported HEIC variant."} Some HEIC files (especially
+          newer iPhone formats or HEIF sequences) can't be decoded in the
+          browser. Download to view in your OS's native viewer.
         </p>
-        <p className="text-xs text-text-muted">
-          Download to view in a HEIC-capable app.
-        </p>
+        <a
+          href={url}
+          download={alt}
+          className="mt-2 inline-flex items-center gap-2 bg-primary hover:bg-primary-hover text-white text-sm px-4 py-2 rounded-lg transition-colors"
+        >
+          <Download className="w-4 h-4" />
+          Download
+        </a>
       </div>
     );
   }
