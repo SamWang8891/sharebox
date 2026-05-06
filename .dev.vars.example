@@ -21,3 +21,8 @@ MAX_TOTAL_BANDWIDTH_BYTES=            # blank = unlimited (R2 egress is free)
 # Optional: Collabora Online for in-browser document editing.
 # When unset, the Edit feature is hidden everywhere.
 # COLLABORA_URL=https://ncoffice.smashit.tw
+
+# Optional: Pika URL shortener (https://github.com/...) base URL.
+# When unset, the "shorten" button on share links is hidden and /api/shorten
+# returns 501. The deployed reference instance is https://fastgoto.xyz.
+# PIKA_BASE_URL=https://fastgoto.xyz

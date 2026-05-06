@@ -16,6 +16,8 @@ export interface Env {
   FILE_TOKEN_SECRET?: string;
   /** Optional Collabora Online base URL (e.g. https://ncoffice.smashit.tw). When unset, edit feature is hidden. */
   COLLABORA_URL?: string;
+  /** Optional Pika URL-shortener base URL (e.g. https://fastgoto.xyz). When unset, the shorten button is hidden. */
+  PIKA_BASE_URL?: string;
 }
 
 export type UserInfo = {

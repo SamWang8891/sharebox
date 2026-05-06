@@ -23,6 +23,8 @@ Browser ──▶ Cloudflare Pages (React)
 - **Admin panel** — manage who's allowed to upload.
 - **HEIC preview** — converted on the client.
 - **Optional Collabora editing** — owners can edit docx/xlsx/pptx/odt in-browser; saves back to R2 in place.
+- **Upload links (drop-boxes)** at `/u/:id` — share a link that lets anyone upload without an account; uploader clicks Done and the link locks into a view-only download page.
+- **Share / copy / QR** on every link, plus optional **URL shortening** via [Pika](https://github.com/) when `PIKA_BASE_URL` is set.
 
 ## Tech
 
@@ -107,6 +109,7 @@ Then in **Cloudflare Pages → Settings**:
 | `VITE_CLERK_PUBLISHABLE_KEY`  | no     | Same value as `CLERK_PUBLISHABLE_KEY`. Embedded in the JS bundle at build time. |
 | `MAX_UPLOAD_SIZE`             | no     | Bytes; default 80 MB                                                    |
 | `COLLABORA_URL`               | no     | e.g. `https://collabora.example.com`. Enables in-browser editing.       |
+| `PIKA_BASE_URL`               | no     | e.g. `https://fastgoto.xyz`. Enables the shorten button on share links. |
 
 `VITE_*` vars must exist at **build time** — set them as plain (non-secret) Pages env vars so they're present during the build.
 
@@ -116,6 +119,19 @@ Then in **Cloudflare Pages → Settings**:
 - **Uploading** requires a signed-in user whose email is in `ADMIN_EMAILS` or the `allowed_users` table.
 - **Admins** (emails in `ADMIN_EMAILS`) manage the allowlist via `/admin`.
 - **Owners** (the uploader) can delete their own files from `/dashboard` and edit them via Collabora if enabled.
+- **Anyone with an open `/u/:id` link** can upload files into it without signing in, subject to the per-link caps (file count, total size, allowed extensions). Once they click Done the link is sealed and downloads are public.
+
+## Upload links (drop-boxes)
+
+Owners can create reusable `/u/:id` links from the dashboard with:
+
+- A **file count** cap and a **total size** cap.
+- **Allowed file types** — any combination of presets (Images / Documents / Spreadsheets / Slides / Video / Audio / Archives) plus free-form custom extensions. Empty list means any type is accepted.
+- An **expiry** that controls how long the link accepts uploads (the view page stays available even after expiry, once confirmed).
+
+Each link gets a **share / copy / QR** action row. If `PIKA_BASE_URL` is configured, owners can also click **shorten** to create a memorable short URL (e.g. `https://fastgoto.xyz/apple`); the short URL gets the same share / copy / QR actions.
+
+Uploaded files are owned by the link creator and count against their storage quota.
 
 ## Optional: Collabora Online editing
 

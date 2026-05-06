@@ -7,6 +7,7 @@ import { Dashboard } from "./pages/Dashboard";
 import { FileView } from "./pages/FileView";
 import { Admin } from "./pages/Admin";
 import { EditView } from "./pages/EditView";
+import { UploadDropbox } from "./pages/UploadDropbox";
 import { getMe, type CurrentUser } from "./lib/api";
 import { Loader2 } from "lucide-react";
 
@@ -62,6 +63,7 @@ export default function App() {
           }
         />
         <Route path="/f/:id" element={<FileView />} />
+        <Route path="/u/:id" element={<UploadDropbox />} />
         <Route
           path="/edit/:id"
           element={

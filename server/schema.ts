@@ -4,6 +4,7 @@ import {
   timestamp,
   integer,
   bigint,
+  jsonb,
 } from "drizzle-orm/pg-core";
 
 export const files = pgTable("files", {
@@ -18,10 +19,29 @@ export const files = pgTable("files", {
   expiresAt: timestamp("expires_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   accessCount: integer("access_count").default(0).notNull(),
+  shareLinkId: text("share_link_id"),
+  uploaderLabel: text("uploader_label"),
 });
 
 export const allowedUsers = pgTable("allowed_users", {
   email: text("email").primaryKey(),
   addedBy: text("added_by"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const shareLinks = pgTable("share_links", {
+  id: text("id").primaryKey(),
+  ownerUserId: text("owner_user_id").notNull(),
+  label: text("label"),
+  maxFiles: integer("max_files"),
+  maxTotalBytes: bigint("max_total_bytes", { mode: "number" }),
+  allowedExtensions: jsonb("allowed_extensions")
+    .$type<string[]>()
+    .notNull()
+    .default([]),
+  status: text("status").notNull().default("open"),
+  shortUrl: text("short_url"),
+  expiresAt: timestamp("expires_at"),
+  confirmedAt: timestamp("confirmed_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
