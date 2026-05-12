@@ -58,3 +58,65 @@ export async function shortenWithPika(
   }
   return { shortUrl: `${base}/${key}` };
 }
+
+/**
+ * Verify a Pika short URL is still alive by issuing a manual-redirect GET.
+ * A live key responds with a 3xx redirect to the long URL; a deleted/expired
+ * key responds with 404 or 410. Transient errors (timeout, network) are
+ * treated as alive so we don't wipe good URLs on a Pika blip.
+ */
+export async function verifyPikaUrl(shortUrl: string): Promise<boolean> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 3500);
+  try {
+    const res = await fetch(shortUrl, {
+      method: "GET",
+      redirect: "manual",
+      signal: controller.signal,
+    });
+    if (res.status === 404 || res.status === 410) return false;
+    return true;
+  } catch {
+    return true;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * Verify a single shortUrl. If dead, run the supplied DB-clear callback and
+ * return null; otherwise return the URL unchanged.
+ */
+export async function checkAndPruneShortUrl(
+  shortUrl: string | null | undefined,
+  clearInDb: () => Promise<void>
+): Promise<string | null> {
+  if (!shortUrl) return null;
+  if (await verifyPikaUrl(shortUrl)) return shortUrl;
+  await clearInDb();
+  return null;
+}
+
+/**
+ * Verify every record's shortUrl in parallel; for any dead ones, run a single
+ * batched DB-clear callback and null-out the field on each affected item.
+ */
+export async function checkAndPruneShortUrls<
+  T extends { id: string; shortUrl: string | null }
+>(items: T[], clearByIds: (ids: string[]) => Promise<void>): Promise<void> {
+  const withShort = items.filter((i) => !!i.shortUrl);
+  if (withShort.length === 0) return;
+  const results = await Promise.all(
+    withShort.map(async (i) => ({
+      id: i.id,
+      alive: await verifyPikaUrl(i.shortUrl as string),
+    }))
+  );
+  const deadIds = results.filter((r) => !r.alive).map((r) => r.id);
+  if (deadIds.length === 0) return;
+  await clearByIds(deadIds);
+  const dead = new Set(deadIds);
+  for (const i of items) {
+    if (dead.has(i.id)) i.shortUrl = null;
+  }
+}

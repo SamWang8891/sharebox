@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql, inArray } from "drizzle-orm";
 import { createDb } from "../db";
 import { files, shareLinks } from "../schema";
 import { requireAuth } from "../middleware";
@@ -10,7 +10,12 @@ import {
   normalizeExtensions,
   parseExpiresIn,
 } from "../share";
-import { shortenWithPika, pikaEnabled } from "../pika";
+import {
+  shortenWithPika,
+  pikaEnabled,
+  checkAndPruneShortUrl,
+  checkAndPruneShortUrls,
+} from "../pika";
 import type { Env, UserInfo } from "../types";
 
 type AdminEnv = {
@@ -37,6 +42,15 @@ adminApp.get("/", requireAuth, async (c) => {
     .from(shareLinks)
     .where(eq(shareLinks.ownerUserId, user.id))
     .orderBy(desc(shareLinks.createdAt));
+
+  if (pikaEnabled(c.env)) {
+    await checkAndPruneShortUrls(links, async (ids) => {
+      await db
+        .update(shareLinks)
+        .set({ shortUrl: null })
+        .where(inArray(shareLinks.id, ids));
+    });
+  }
 
   // Aggregate file stats per link in one query.
   const stats = await db
@@ -145,6 +159,15 @@ adminApp.get("/:id", requireAuth, async (c) => {
   if (!link) return c.json({ error: "Share link not found" }, 404);
   if (link.ownerUserId !== user.id && !user.isAdmin) {
     return c.json({ error: "Not authorized" }, 403);
+  }
+
+  if (pikaEnabled(c.env) && link.shortUrl) {
+    link.shortUrl = await checkAndPruneShortUrl(link.shortUrl, async () => {
+      await db
+        .update(shareLinks)
+        .set({ shortUrl: null })
+        .where(eq(shareLinks.id, id));
+    });
   }
 
   const linkFiles = await db
@@ -270,6 +293,15 @@ publicApp.get("/:id", async (c) => {
     .where(eq(shareLinks.id, id))
     .limit(1);
   if (!link) return c.json({ error: "Share link not found" }, 404);
+
+  if (pikaEnabled(c.env) && link.shortUrl) {
+    link.shortUrl = await checkAndPruneShortUrl(link.shortUrl, async () => {
+      await db
+        .update(shareLinks)
+        .set({ shortUrl: null })
+        .where(eq(shareLinks.id, id));
+    });
+  }
 
   const expired = isLinkExpired(link.expiresAt);
   const linkFiles = await db

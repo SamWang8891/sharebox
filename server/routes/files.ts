@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, inArray } from "drizzle-orm";
 import { createDb } from "../db";
 import { files } from "../schema";
 import { requireAuth } from "../middleware";
@@ -25,7 +25,12 @@ import {
   getEditActionUrl,
   createWopiToken,
 } from "../wopi";
-import { pikaEnabled, shortenWithPika } from "../pika";
+import {
+  pikaEnabled,
+  shortenWithPika,
+  checkAndPruneShortUrl,
+  checkAndPruneShortUrls,
+} from "../pika";
 import type { Env, UserInfo } from "../types";
 
 type FilesEnv = {
@@ -44,6 +49,15 @@ app.get("/", requireAuth, async (c) => {
     .from(files)
     .where(eq(files.userId, user.id))
     .orderBy(desc(files.createdAt));
+
+  if (pikaEnabled(c.env)) {
+    await checkAndPruneShortUrls(userFiles, async (ids) => {
+      await db
+        .update(files)
+        .set({ shortUrl: null })
+        .where(inArray(files.id, ids));
+    });
+  }
 
   return c.json(
     userFiles.map((f) => ({
@@ -165,6 +179,15 @@ app.get("/:id", async (c) => {
   if (token) {
     const u = await verifyClerkToken(c.env, token);
     if (u && u.id === file.userId) isOwner = true;
+  }
+
+  if (pikaEnabled(c.env) && file.shortUrl) {
+    file.shortUrl = await checkAndPruneShortUrl(file.shortUrl, async () => {
+      await db
+        .update(files)
+        .set({ shortUrl: null })
+        .where(eq(files.id, fileId));
+    });
   }
 
   return c.json({
