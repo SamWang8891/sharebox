@@ -13,19 +13,24 @@ import { Link } from "react-router-dom";
 import { PasswordPrompt } from "../components/PasswordPrompt";
 import { CodePreview, isTextLike } from "../components/CodePreview";
 import { HeicPreview, isHeic } from "../components/HeicPreview";
+import { LinkActions } from "../components/LinkActions";
 import "highlight.js/styles/github-dark.css";
 import {
+  getConfig,
   getFileInfo,
   verifyFilePassword,
   getRawFileUrl,
   formatBytes,
   formatDate,
+  shortenFile,
+  type AppConfig,
   type FileInfo,
 } from "../lib/api";
 
 export function FileView() {
   const { id } = useParams<{ id: string }>();
   const [file, setFile] = useState<FileInfo | null>(null);
+  const [config, setConfig] = useState<AppConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
@@ -38,7 +43,17 @@ export function FileView() {
       .then(setFile)
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
+    getConfig()
+      .then(setConfig)
+      .catch(() => setConfig({ pikaEnabled: false, maxUploadSize: 0 }));
   }, [id]);
+
+  const handleShorten = async () => {
+    if (!file) throw new Error("File not loaded");
+    const { shortUrl } = await shortenFile(file.id);
+    setFile({ ...file, shortUrl });
+    return shortUrl;
+  };
 
   const handlePasswordSubmit = async (password: string) => {
     if (!id) return;
@@ -133,6 +148,16 @@ export function FileView() {
               Download
             </a>
           </div>
+        </div>
+        <div className="mt-4">
+          <LinkActions
+            url={`${window.location.origin}/f/${file.id}`}
+            title={file.originalName}
+            shareText={file.originalName}
+            pikaEnabled={!!config?.pikaEnabled}
+            shortUrl={file.shortUrl ?? null}
+            onShorten={file.isOwner ? handleShorten : undefined}
+          />
         </div>
       </div>
 

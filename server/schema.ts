@@ -21,6 +21,7 @@ export const files = pgTable("files", {
   accessCount: integer("access_count").default(0).notNull(),
   shareLinkId: text("share_link_id"),
   uploaderLabel: text("uploader_label"),
+  shortUrl: text("short_url"),
 });
 
 export const allowedUsers = pgTable("allowed_users", {

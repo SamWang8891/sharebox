@@ -42,7 +42,8 @@ CREATE TABLE IF NOT EXISTS share_links (
 
 ALTER TABLE files
   ADD COLUMN IF NOT EXISTS share_link_id TEXT REFERENCES share_links(id) ON DELETE SET NULL,
-  ADD COLUMN IF NOT EXISTS uploader_label TEXT;
+  ADD COLUMN IF NOT EXISTS uploader_label TEXT,
+  ADD COLUMN IF NOT EXISTS short_url TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_files_user_id ON files(user_id);
 CREATE INDEX IF NOT EXISTS idx_files_expires_at ON files(expires_at);

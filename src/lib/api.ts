@@ -58,6 +58,7 @@ export type FileInfo = {
   createdAt: string;
   accessCount: number;
   url?: string;
+  shortUrl?: string | null;
   /** Present on /files/:id only. */
   canEdit?: boolean;
   isOwner?: boolean;
@@ -96,6 +97,12 @@ export async function getFileInfo(id: string): Promise<FileInfo> {
 
 export async function deleteFile(id: string): Promise<void> {
   await request(`/files/${id}`, { method: "DELETE" });
+}
+
+export async function shortenFile(
+  id: string
+): Promise<{ shortUrl: string }> {
+  return request(`/files/${id}/shorten`, { method: "POST" });
 }
 
 export async function verifyFilePassword(
@@ -216,6 +223,7 @@ export type PublicShareLink = {
   maxFiles: number | null;
   maxTotalBytes: number | null;
   allowedExtensions: string[];
+  shortUrl: string | null;
   expiresAt: string | null;
   confirmedAt: string | null;
   createdAt: string;

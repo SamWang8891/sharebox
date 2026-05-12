@@ -1,8 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  Copy,
-  Check,
   Trash2,
   Download,
   Lock,
@@ -15,8 +13,16 @@ import {
   FileArchive,
   File,
 } from "lucide-react";
-import { deleteFile, formatBytes, formatDate, isExpired, getRawFileUrl } from "../lib/api";
+import {
+  deleteFile,
+  formatBytes,
+  formatDate,
+  isExpired,
+  getRawFileUrl,
+  shortenFile,
+} from "../lib/api";
 import type { FileInfo } from "../lib/api";
+import { LinkActions } from "./LinkActions";
 
 function getFileIcon(mimeType: string | null) {
   if (!mimeType) return File;
@@ -35,23 +41,19 @@ function getFileIcon(mimeType: string | null) {
 
 export function FileCard({
   file,
+  pikaEnabled,
   onDeleted,
+  onUpdated,
 }: {
   file: FileInfo;
+  pikaEnabled: boolean;
   onDeleted: () => void;
+  onUpdated?: (f: FileInfo) => void;
 }) {
-  const [copied, setCopied] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const expired = isExpired(file.expiresAt);
   const Icon = getFileIcon(file.mimeType);
-
-  const copyLink = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    navigator.clipboard.writeText(`${window.location.origin}/f/${file.id}`);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+  const fullUrl = `${window.location.origin}/f/${file.id}`;
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -66,9 +68,15 @@ export function FileCard({
     }
   };
 
+  const handleShorten = async () => {
+    const { shortUrl } = await shortenFile(file.id);
+    onUpdated?.({ ...file, shortUrl });
+    return shortUrl;
+  };
+
   return (
     <div
-      className={`group bg-surface-light rounded-xl border transition-colors ${
+      className={`bg-surface-light rounded-xl border transition-colors ${
         expired
           ? "border-danger/30 opacity-60"
           : "border-border hover:border-primary/40"
@@ -136,18 +144,6 @@ export function FileCard({
             </a>
           )}
           <button
-            onClick={copyLink}
-            className="p-2 rounded-lg hover:bg-surface transition-colors"
-            title="Copy link"
-            aria-label="Copy link"
-          >
-            {copied ? (
-              <Check className="w-4 h-4 text-success" />
-            ) : (
-              <Copy className="w-4 h-4 text-text-muted" />
-            )}
-          </button>
-          <button
             onClick={handleDelete}
             disabled={deleting}
             className="p-2 rounded-lg hover:bg-surface transition-colors"
@@ -159,6 +155,17 @@ export function FileCard({
             />
           </button>
         </div>
+      </div>
+
+      <div className="px-3 pb-3 sm:px-4 sm:pb-4">
+        <LinkActions
+          url={fullUrl}
+          title={file.originalName}
+          shareText={file.originalName}
+          pikaEnabled={pikaEnabled}
+          shortUrl={file.shortUrl ?? null}
+          onShorten={handleShorten}
+        />
       </div>
     </div>
   );

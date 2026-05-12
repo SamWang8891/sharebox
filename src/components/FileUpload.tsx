@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from "react";
-import { Upload, Lock, Clock, X, Check, Copy, Loader2 } from "lucide-react";
-import { uploadFile, type FileInfo } from "../lib/api";
+import { Upload, Lock, Clock, X, Check, Loader2 } from "lucide-react";
+import { shortenFile, uploadFile, type FileInfo } from "../lib/api";
+import { LinkActions } from "./LinkActions";
 
 const EXPIRY_OPTIONS = [
   { label: "1 hour", value: "1" },
@@ -10,14 +11,19 @@ const EXPIRY_OPTIONS = [
   { label: "Never", value: "never" },
 ];
 
-export function FileUpload({ onUploaded }: { onUploaded: () => void }) {
+export function FileUpload({
+  onUploaded,
+  pikaEnabled,
+}: {
+  onUploaded: () => void;
+  pikaEnabled: boolean;
+}) {
   const [dragOver, setDragOver] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [password, setPassword] = useState("");
   const [expiresIn, setExpiresIn] = useState("never");
   const [result, setResult] = useState<FileInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleUpload = useCallback(
@@ -62,12 +68,11 @@ export function FileUpload({ onUploaded }: { onUploaded: () => void }) {
     [handleUpload]
   );
 
-  const copyLink = useCallback(() => {
-    if (!result) return;
-    const url = `${window.location.origin}/f/${result.id}`;
-    navigator.clipboard.writeText(url);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handleShorten = useCallback(async () => {
+    if (!result) throw new Error("No file");
+    const { shortUrl } = await shortenFile(result.id);
+    setResult({ ...result, shortUrl });
+    return shortUrl;
   }, [result]);
 
   return (
@@ -145,22 +150,19 @@ export function FileUpload({ onUploaded }: { onUploaded: () => void }) {
 
       {/* Result */}
       {result && (
-        <div className="bg-surface-light border border-success/30 rounded-xl p-4 flex items-center justify-between gap-3">
+        <div className="bg-surface-light border border-success/30 rounded-xl p-4 space-y-3">
           <div className="flex items-center gap-2 min-w-0">
             <Check className="w-5 h-5 text-success shrink-0" />
             <span className="text-sm truncate">{result.originalName}</span>
           </div>
-          <button
-            onClick={copyLink}
-            className="flex items-center gap-1.5 bg-primary hover:bg-primary-hover text-white text-sm px-3 py-1.5 rounded-lg transition-colors shrink-0"
-          >
-            {copied ? (
-              <Check className="w-4 h-4" />
-            ) : (
-              <Copy className="w-4 h-4" />
-            )}
-            {copied ? "Copied!" : "Copy link"}
-          </button>
+          <LinkActions
+            url={`${window.location.origin}/f/${result.id}`}
+            title={result.originalName}
+            shareText={result.originalName}
+            pikaEnabled={pikaEnabled}
+            shortUrl={result.shortUrl ?? null}
+            onShorten={handleShorten}
+          />
         </div>
       )}
 

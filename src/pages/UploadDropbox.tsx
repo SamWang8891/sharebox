@@ -17,15 +17,18 @@ import {
 import {
   formatBytes,
   formatDate,
+  getConfig,
   getPublicShareDownloadUrl,
   getPublicShareLink,
   isExpired,
   publicShareConfirm,
   publicShareDeleteFile,
   publicShareUpload,
+  type AppConfig,
   type PublicShareLink,
   type ShareLinkFile,
 } from "../lib/api";
+import { LinkActions } from "../components/LinkActions";
 
 function getFileExt(name: string): string {
   const i = name.lastIndexOf(".");
@@ -35,6 +38,7 @@ function getFileExt(name: string): string {
 export function UploadDropbox() {
   const { id } = useParams<{ id: string }>();
   const [link, setLink] = useState<PublicShareLink | null>(null);
+  const [config, setConfig] = useState<AppConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -52,6 +56,9 @@ export function UploadDropbox() {
 
   useEffect(() => {
     reload();
+    getConfig()
+      .then(setConfig)
+      .catch(() => setConfig({ pikaEnabled: false, maxUploadSize: 0 }));
   }, [reload]);
 
   if (loading) {
@@ -79,7 +86,7 @@ export function UploadDropbox() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
-      <Header link={link} />
+      <Header link={link} pikaEnabled={!!config?.pikaEnabled} />
       {isOpen ? (
         <UploaderView link={link} onChange={reload} />
       ) : (
@@ -90,7 +97,13 @@ export function UploadDropbox() {
 }
 
 // ── Header ─────────────────────────────────────────────────────────
-function Header({ link }: { link: PublicShareLink }) {
+function Header({
+  link,
+  pikaEnabled,
+}: {
+  link: PublicShareLink;
+  pikaEnabled: boolean;
+}) {
   const expired = link.status === "expired" || isExpired(link.expiresAt);
 
   let badge;
@@ -150,6 +163,19 @@ function Header({ link }: { link: PublicShareLink }) {
             confirmed {formatDate(link.confirmedAt)}
           </span>
         )}
+      </div>
+      <div className="mt-3">
+        <LinkActions
+          url={`${window.location.origin}/u/${link.id}`}
+          title={link.label || "ShareBox upload link"}
+          shareText={
+            link.status === "confirmed"
+              ? "Files shared with you on ShareBox"
+              : "Upload your files here"
+          }
+          pikaEnabled={pikaEnabled}
+          shortUrl={link.shortUrl}
+        />
       </div>
     </div>
   );

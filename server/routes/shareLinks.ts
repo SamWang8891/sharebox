@@ -287,6 +287,7 @@ publicApp.get("/:id", async (c) => {
     maxFiles: link.maxFiles,
     maxTotalBytes: link.maxTotalBytes,
     allowedExtensions: link.allowedExtensions,
+    shortUrl: link.shortUrl ?? null,
     expiresAt: link.expiresAt?.toISOString() ?? null,
     confirmedAt: link.confirmedAt?.toISOString() ?? null,
     createdAt: link.createdAt.toISOString(),

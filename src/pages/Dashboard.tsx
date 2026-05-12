@@ -54,7 +54,10 @@ export function Dashboard() {
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-12">
       <section>
         <h1 className="text-2xl font-bold mb-6">Upload</h1>
-        <FileUpload onUploaded={loadFiles} />
+        <FileUpload
+          onUploaded={loadFiles}
+          pikaEnabled={!!config?.pikaEnabled}
+        />
 
         <div className="mt-10">
           <h2 className="text-lg font-semibold mb-4">
@@ -78,7 +81,17 @@ export function Dashboard() {
           ) : (
             <div className="space-y-2">
               {files.map((file) => (
-                <FileCard key={file.id} file={file} onDeleted={loadFiles} />
+                <FileCard
+                  key={file.id}
+                  file={file}
+                  pikaEnabled={!!config?.pikaEnabled}
+                  onDeleted={loadFiles}
+                  onUpdated={(updated) =>
+                    setFiles((prev) =>
+                      prev.map((f) => (f.id === updated.id ? updated : f))
+                    )
+                  }
+                />
               ))}
             </div>
           )}

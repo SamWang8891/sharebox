@@ -25,6 +25,7 @@ import {
   getEditActionUrl,
   createWopiToken,
 } from "../wopi";
+import { pikaEnabled, shortenWithPika } from "../pika";
 import type { Env, UserInfo } from "../types";
 
 type FilesEnv = {
@@ -55,6 +56,7 @@ app.get("/", requireAuth, async (c) => {
       createdAt: f.createdAt.toISOString(),
       accessCount: f.accessCount,
       url: `/f/${f.id}`,
+      shortUrl: f.shortUrl,
     }))
   );
 });
@@ -133,6 +135,7 @@ app.post("/", requireAuth, async (c) => {
     accessCount: 0,
     createdAt: new Date().toISOString(),
     mimeType: file.type || "application/octet-stream",
+    shortUrl: null,
   });
 });
 
@@ -178,7 +181,48 @@ app.get("/:id", async (c) => {
       !file.passwordHash &&
       isEditableExtension(file.originalName),
     isOwner,
+    shortUrl: file.shortUrl,
   });
+});
+
+// ── Shorten this file's public URL via Pika (owner-only) ───────────
+app.post("/:id/shorten", requireAuth, async (c) => {
+  const user = c.get("user");
+  const fileId = c.req.param("id");
+  if (!pikaEnabled(c.env)) {
+    return c.json({ error: "Shortener is not configured" }, 501);
+  }
+
+  const db = createDb(c.env.DATABASE_URL);
+  const [file] = await db
+    .select()
+    .from(files)
+    .where(eq(files.id, fileId))
+    .limit(1);
+  if (!file) return c.json({ error: "File not found" }, 404);
+  if (file.userId !== user.id && !user.isAdmin) {
+    return c.json({ error: "Not authorized" }, 403);
+  }
+  if (file.shortUrl) return c.json({ shortUrl: file.shortUrl });
+
+  const longUrl = `${new URL(c.req.url).origin}/f/${fileId}`;
+  try {
+    const { shortUrl } = await shortenWithPika(c.env, longUrl);
+    await db
+      .update(files)
+      .set({ shortUrl })
+      .where(eq(files.id, fileId));
+    return c.json({ shortUrl });
+  } catch (err) {
+    console.error("Pika shorten failed:", err);
+    return c.json(
+      {
+        error: "Shortener failed",
+        message: err instanceof Error ? err.message : String(err),
+      },
+      502
+    );
+  }
 });
 
 // ── Start an edit session (owner-only) ──────────────────────────────
